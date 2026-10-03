@@ -3,6 +3,7 @@
 
   const VERIFIED_KEY = 'mr-darkness-chatgpt-plan-verified-v1';
   const MODEL_KEY = 'mr-darkness-chatgpt-plan-model-v1';
+  const ERROR_KEY = 'mr-darkness-chatgpt-plan-error-v1';
   const STORE_KEY = 'mr-darkness-hq-v3';
 
   const getPlugin = () => {
@@ -15,6 +16,11 @@
   const setVerified = value => {
     if (value) localStorage.setItem(VERIFIED_KEY, 'true');
     else localStorage.removeItem(VERIFIED_KEY);
+  };
+  const getLastError = () => localStorage.getItem(ERROR_KEY) || '';
+  const setLastError = value => {
+    if (value) localStorage.setItem(ERROR_KEY, String(value));
+    else localStorage.removeItem(ERROR_KEY);
   };
 
   const getModels = async plugin => {
@@ -40,34 +46,48 @@
     return models[0]?.slug || models[0]?.id || '';
   };
 
-  async function verifyConnection(plugin) {
-    const raw = await plugin.getStatus();
-    if (!raw?.connected || !raw?.planSharing) {
+  async function rawStatus(plugin = getPlugin()) {
+    if (!plugin) return { available: false, connected: false, planSharing: false };
+    return plugin.getStatus();
+  }
+
+  async function verifyConnection(plugin = getPlugin()) {
+    if (!plugin) throw new Error('Native ChatGPT bridge is unavailable.');
+    setVerified(false);
+    setLastError('');
+
+    try {
+      const raw = await rawStatus(plugin);
+      if (!raw?.connected || !raw?.planSharing) {
+        throw new Error('The browser sign-in did not leave a usable ChatGPT plan session in Mr Darkness.');
+      }
+
+      const models = await getModels(plugin);
+      if (!models.length) {
+        throw new Error('Authorization was saved, but OpenAI returned no plan-sharing models for this account.');
+      }
+
+      const model = chooseModel(models);
+      const test = await plugin.respond({
+        model,
+        instructions: 'Connection diagnostic only. Follow the user instruction exactly and do not add commentary.',
+        input: 'Reply exactly with the single word ONLINE.'
+      });
+
+      if (!test?.text || !/\bONLINE\b/i.test(test.text)) {
+        throw new Error('Authorization and model lookup worked, but the direct Responses test did not return ONLINE.');
+      }
+
+      const activeModel = test.model || model;
+      saveModel(activeModel);
+      setVerified(true);
+      setLastError('');
+      return { available: true, ...raw, connected: true, verified: true, authorized: true, model: activeModel, models };
+    } catch (error) {
       setVerified(false);
-      throw new Error('ChatGPT sign-in finished without ChatGPT plan sharing. Reconnect and approve plan usage.');
+      setLastError(error?.message || String(error));
+      throw error;
     }
-
-    const models = await getModels(plugin);
-    if (!models.length) {
-      setVerified(false);
-      throw new Error('ChatGPT is authorized, but no plan-sharing models were returned for this account.');
-    }
-
-    const model = chooseModel(models);
-    const test = await plugin.respond({
-      model,
-      instructions: 'Connection diagnostic only. Follow the user instruction exactly and do not add commentary.',
-      input: 'Reply exactly with the single word ONLINE.'
-    });
-
-    if (!test?.text || !/\bONLINE\b/i.test(test.text)) {
-      setVerified(false);
-      throw new Error('ChatGPT authorization succeeded, but the direct inference test did not complete correctly.');
-    }
-
-    saveModel(test.model || model);
-    setVerified(true);
-    return { available: true, ...raw, connected: true, verified: true, model: test.model || model, models };
   }
 
   const bridge = {
@@ -75,18 +95,25 @@
 
     async status() {
       const plugin = getPlugin();
-      if (!plugin) return { available: false, connected: false, verified: false, mode: 'browser' };
+      if (!plugin) return { available: false, connected: false, verified: false, authorized: false, mode: 'browser' };
       try {
-        const raw = await plugin.getStatus();
-        if (!raw?.connected || !raw?.planSharing) {
-          setVerified(false);
-          return { available: true, ...raw, connected: false, verified: false, authorized: false };
-        }
-        const verified = isVerified();
-        return { available: true, ...raw, connected: verified, verified, authorized: true };
+        const raw = await rawStatus(plugin);
+        const authorized = Boolean(raw?.connected && raw?.planSharing);
+        const verified = authorized && isVerified();
+        if (!authorized) setVerified(false);
+        return {
+          available: true,
+          ...raw,
+          connected: verified,
+          verified,
+          authorized,
+          model: localStorage.getItem(MODEL_KEY) || '',
+          lastError: getLastError()
+        };
       } catch (error) {
         setVerified(false);
-        return { available: true, connected: false, verified: false, error: error?.message || String(error) };
+        setLastError(error?.message || String(error));
+        return { available: true, connected: false, verified: false, authorized: false, error: error?.message || String(error), lastError: getLastError() };
       }
     },
 
@@ -95,16 +122,22 @@
       if (!plugin) throw new Error('ChatGPT plan sharing is only available in the local Android build.');
 
       setVerified(false);
-      let raw = await plugin.getStatus().catch(() => null);
+      setLastError('');
+      let raw = await rawStatus(plugin).catch(() => null);
       if (!raw?.connected || !raw?.planSharing) {
         await plugin.signIn({ agentName: 'Mr Darkness HQ' });
       }
       return verifyConnection(plugin);
     },
 
+    async verify() {
+      return verifyConnection(getPlugin());
+    },
+
     async disconnect() {
       const plugin = getPlugin();
       setVerified(false);
+      setLastError('');
       if (!plugin) return;
       return plugin.signOut();
     },
@@ -118,9 +151,12 @@
     async ask({ model, instructions, input }) {
       const plugin = getPlugin();
       if (!plugin) throw new Error('Native ChatGPT bridge is not available in this browser build.');
-      const raw = await plugin.getStatus();
-      if (!raw?.connected || !raw?.planSharing || !isVerified()) {
-        throw new Error('ChatGPT connection is not verified. Tap CONTINUE WITH CHATGPT first.');
+      const raw = await rawStatus(plugin);
+      if (!raw?.connected || !raw?.planSharing) {
+        throw new Error('Mr Darkness does not have a saved ChatGPT plan session yet.');
+      }
+      if (!isVerified()) {
+        throw new Error(getLastError() || 'ChatGPT authorization exists, but the direct connection test has not passed yet.');
       }
       const chosen = model || localStorage.getItem(MODEL_KEY) || '';
       const result = await plugin.respond({ model: chosen, instructions, input });
@@ -219,6 +255,63 @@
     renderStoredMessages(state);
   }
 
+  function renderConnection(status, workingText = '') {
+    const title = document.getElementById('brainConnection');
+    const sub = document.getElementById('brainConnectionSub');
+    const button = document.getElementById('nativeConnectBtn');
+    const label = document.getElementById('brainLabel');
+    const settings = document.getElementById('nativeStatus');
+    if (!title || !sub || !button) return;
+
+    if (workingText) {
+      title.textContent = workingText;
+      sub.textContent = 'Do not leave this screen; Mr Darkness is checking the saved authorization and direct model route.';
+      button.textContent = 'CHECKING…';
+      button.disabled = true;
+      return;
+    }
+
+    if (status?.connected && status?.verified) {
+      title.textContent = 'CHATGPT PLAN CONNECTED';
+      sub.textContent = status.model ? `Direct connection verified · ${status.model}` : 'Direct connection verified.';
+      button.textContent = 'CONNECTED';
+      button.disabled = true;
+      if (label) label.textContent = 'CHATGPT ONLINE';
+      if (settings) settings.textContent = 'Connected and verified';
+      return;
+    }
+
+    if (status?.authorized) {
+      title.textContent = status.lastError ? 'CHATGPT AUTHORIZED — TEST FAILED' : 'CHATGPT AUTHORIZED — VERIFYING';
+      sub.textContent = status.lastError || 'Authorization is saved. Mr Darkness still needs to complete the direct model test.';
+      button.textContent = 'RETRY CONNECTION TEST';
+      button.disabled = false;
+      if (settings) settings.textContent = status.lastError || 'Authorized — not verified';
+      return;
+    }
+
+    title.textContent = 'NATIVE BRIDGE READY';
+    sub.textContent = status?.lastError || 'Connect your ChatGPT account to use plan sharing.';
+    button.textContent = 'CONTINUE WITH CHATGPT';
+    button.disabled = false;
+    if (settings) settings.textContent = status?.lastError || 'Detected — not signed in';
+  }
+
+  async function connectFromUi() {
+    const state = readState();
+    const mode = state?.brain?.mode || 'producer';
+    renderConnection(null, 'CONNECTING TO CHATGPT');
+    try {
+      const result = await bridge.connect();
+      renderConnection(result);
+      addStoredMessage('assistant', `ChatGPT plan connection verified. Direct responses are online${result.model ? ` through ${result.model}` : ''}.`, mode);
+    } catch (error) {
+      const status = await bridge.status();
+      renderConnection(status);
+      addStoredMessage('assistant', `Connection test failed: ${error?.message || String(error)}`, mode);
+    }
+  }
+
   async function nativeAskFromUi() {
     const input = document.getElementById('brainInput');
     const button = document.getElementById('brainSend');
@@ -234,7 +327,10 @@
 
     try {
       const status = await bridge.status();
-      if (!status.connected) throw new Error('ChatGPT is not verified yet. Tap CONTINUE WITH CHATGPT, let the connection test finish, then ASK again.');
+      if (!status.connected) {
+        const detail = status.lastError || (status.authorized ? 'Authorization is saved but the direct connection test has not passed.' : 'No saved ChatGPT plan session was found.');
+        throw new Error(detail);
+      }
       const freshState = readState();
       const result = await bridge.ask({
         model: freshState?.brain?.model || localStorage.getItem(MODEL_KEY) || '',
@@ -250,16 +346,47 @@
     }
   }
 
-  // In the Android shell, ASK must never silently fall back to opening chatgpt.com.
-  // Capture the button before the browser-fallback handler in app.js can run.
+  let autoAttempted = false;
+  async function autoCheck() {
+    const plugin = getPlugin();
+    if (!plugin) return;
+    const status = await bridge.status();
+    renderConnection(status);
+    if (status.authorized && !status.verified && !autoAttempted) {
+      autoAttempted = true;
+      renderConnection(null, 'CHATGPT AUTHORIZED — VERIFYING');
+      try {
+        const verified = await bridge.verify();
+        renderConnection(verified);
+      } catch (error) {
+        const failed = await bridge.status();
+        renderConnection(failed);
+      }
+    }
+  }
+
+  // Android: own both CONNECT and ASK so app.js cannot fall back to chatgpt.com or hide diagnostics.
   document.addEventListener('click', event => {
     if (!getPlugin()) return;
+    const connectButton = event.target?.closest?.('#nativeConnectBtn');
+    if (connectButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      connectFromUi();
+      return;
+    }
     const askButton = event.target?.closest?.('#brainSend');
-    if (!askButton) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    nativeAskFromUi();
+    if (askButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      nativeAskFromUi();
+    }
   }, true);
 
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) setTimeout(autoCheck, 500);
+  });
+
   window.MDNative = bridge;
+  setTimeout(autoCheck, 1200);
 })();
