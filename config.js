@@ -5,3 +5,7 @@ window.MD_CONFIG = {
   publishableKey: '',
   functionName: 'ask-mr-darkness'
 };
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
