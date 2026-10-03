@@ -27,16 +27,25 @@ for (const name of ['ChatGPTPlanPlugin.java', 'LoopbackCallbackServer.java', 'Ma
   await cp(resolve(pluginSource, name), resolve(javaTarget, name));
 }
 
-// ChatGPT plan-sharing currently requires Responses API `input` to be an array.
-// Keep the readable source plugin simple, then enforce the current OpenAI contract in the generated Android source.
+// Enforce current OpenAI Responses contract and Android browser behavior in the generated native source.
 const generatedPlugin = resolve(javaTarget, 'ChatGPTPlanPlugin.java');
 let pluginJava = await readFile(generatedPlugin, 'utf8');
+
 const oldInputLine = '        payload.put("input", input);';
 const newInputLine = '        payload.put("input", new JSONArray().put(new JSONObject().put("role", "user").put("content", input)));';
 if (!pluginJava.includes(oldInputLine)) {
   throw new Error('Could not patch ChatGPTPlanPlugin.java: expected Responses input line was not found.');
 }
 pluginJava = pluginJava.replace(oldInputLine, newInputLine);
+
+// OpenAI requires the system browser for the open-source Sign in with ChatGPT loopback flow.
+// A generic ACTION_VIEW can be claimed by the ChatGPT Android app, preventing the 127.0.0.1 callback.
+const oldLaunch = `Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(authUrl));\n                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);\n                getActivity().startActivity(intent);`;
+const newLaunch = `Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(authUrl));\n                intent.setPackage("com.android.chrome");\n                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);\n                try {\n                    getActivity().startActivity(intent);\n                } catch (Exception chromeMissing) {\n                    Intent fallback = new Intent(Intent.ACTION_VIEW, Uri.parse(authUrl));\n                    fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);\n                    Intent chooser = Intent.createChooser(fallback, "Open authorization in browser");\n                    chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);\n                    getActivity().startActivity(chooser);\n                }`;
+if (!pluginJava.includes(oldLaunch)) {
+  throw new Error('Could not patch ChatGPTPlanPlugin.java: expected authorization launch block was not found.');
+}
+pluginJava = pluginJava.replace(oldLaunch, newLaunch);
 await writeFile(generatedPlugin, pluginJava, 'utf8');
 
 const gradlePath = resolve(androidRoot, 'app/build.gradle');
