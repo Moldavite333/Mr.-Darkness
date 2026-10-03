@@ -1,22 +1,23 @@
 {
-  "id": "./",
+  "id": "/Mr.-Darkness/",
   "name": "Mr Darkness HQ",
   "short_name": "Mr Darkness",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/Mr.-Darkness/",
+  "scope": "/Mr.-Darkness/",
   "display": "standalone",
   "background_color": "#070607",
   "theme_color": "#080708",
   "description": "Creative control system for the Mr Darkness music project",
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "icons/icon-192.png",
+      "src": "/Mr.-Darkness/icons/icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "/Mr.-Darkness/icons/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
