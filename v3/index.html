@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080708">
+  <meta name="description" content="Mr Darkness V3 — producer workstation for songs, Suno generations, lyrics, album continuity, visuals and release planning.">
+  <title>Mr Darkness V3</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <header class="topbar">
+    <button class="menu-btn" id="menuBtn" aria-label="Open navigation">☰</button>
+    <button class="brand" data-go="control" aria-label="Mr Darkness V3 home">
+      <span class="brand-mark">MD</span>
+      <span class="brand-copy"><strong>MR DARKNESS</strong><small>PRODUCER WORKSTATION // V3</small></span>
+    </button>
+    <div class="top-actions">
+      <button class="brain-pill" id="brainBtn"><i></i><span id="brainLabel">CHATGPT BRIDGE</span></button>
+      <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
+    </div>
+  </header>
+
+  <aside class="rail" id="rail">
+    <nav>
+      <button class="active" data-view="control"><b>01</b><span>Control Room</span></button>
+      <button data-view="build"><b>02</b><span>Build a Song</span></button>
+      <button data-view="generations"><b>03</b><span>Generation Lab</span></button>
+      <button data-view="lyrics"><b>04</b><span>Lyrics</span></button>
+      <button data-view="vocal"><b>05</b><span>Vocal DNA</span></button>
+      <button data-view="suno"><b>06</b><span>Suno Studio</span></button>
+      <button data-view="vault"><b>07</b><span>Song Vault</span></button>
+      <button data-view="album"><b>08</b><span>Album Director</span></button>
+      <button data-view="visual"><b>09</b><span>Visuals</span></button>
+      <button data-view="release"><b>10</b><span>Release HQ</span></button>
+    </nav>
+    <div class="rail-foot">
+      <span>ACTIVE SONG</span>
+      <strong id="railSong">Untitled Transmission</strong>
+      <small id="railSave">SAVED LOCALLY</small>
+    </div>
+  </aside>
+
+  <main class="app">
+    <section class="view active" id="control">
+      <div class="hero">
+        <div>
+          <p class="eyebrow">MR DARKNESS // PRODUCER MODE</p>
+          <h1>Build the song.<br><em>Protect the identity.</em></h1>
+          <p class="lede">A production system for turning rough ideas into repeatable Mr Darkness songs without losing the baritone, the shimmer, the bass, or the 1986 underground pulse along the way.</p>
+          <div class="actions">
+            <button class="primary" data-go="build">BUILD A SONG</button>
+            <button class="ghost" data-go="generations">OPEN GENERATION LAB</button>
+          </div>
+        </div>
+        <div class="hero-status">
+          <span>CURRENT ERA</span>
+          <strong>1986</strong>
+          <small>goth // darkwave // analog // nocturnal</small>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <article class="stat"><span>SONGS</span><strong id="statSongs">0</strong><small>in the vault</small></article>
+        <article class="stat"><span>GENERATIONS</span><strong id="statGenerations">0</strong><small>tracked</small></article>
+        <article class="stat"><span>PHRASES</span><strong id="statPhrases">0</strong><small>saved</small></article>
+        <article class="stat"><span>ALBUM BPM</span><strong id="statBpm">—</strong><small>average</small></article>
+      </div>
+
+      <div class="dashboard-grid">
+        <article class="panel span2">
+          <div class="panel-head"><div><span class="panel-title">ACTIVE PROJECT</span><h2 id="controlSongTitle">Untitled Transmission</h2></div><span class="status" id="controlSongStatus">IDEA</span></div>
+          <div class="song-signal" id="songSignal"></div>
+          <div class="mini-timeline" id="miniTimeline"></div>
+          <div class="actions"><button class="secondary" data-go="build">EDIT PRODUCTION SHEET</button><button class="ghost" data-go="suno">OPEN SUNO PROMPTS</button></div>
+        </article>
+        <article class="panel redline">
+          <span class="panel-title">RED LINE</span><h2>Never drift here</h2>
+          <ul class="danger-list" id="redLines"></ul>
+        </article>
+        <article class="panel">
+          <span class="panel-title">NEXT MOVE</span><h2 id="nextMoveTitle">Start a song</h2>
+          <p id="nextMoveCopy" class="muted">Build a production sheet so every later tool has something concrete to protect.</p>
+          <button class="secondary" id="nextMoveBtn" data-go="build">GO</button>
+        </article>
+      </div>
+
+      <article class="panel">
+        <div class="panel-head"><div><span class="panel-title">CORE SIGNAL</span><h2>Mr Darkness DNA</h2></div><button class="ghost" id="editCanonBtn">EDIT CORE</button></div>
+        <div class="chip-cloud" id="dnaChips"></div>
+      </article>
+    </section>
+
+    <section class="view" id="build">
+      <div class="section-head"><div><p class="eyebrow">02 // PRE-PRODUCTION</p><h1>Build a Song</h1><p>Turn a loose idea into a production sheet before Suno gets a chance to derail it.</p></div><button class="primary" id="buildSheetBtn">BUILD PRODUCTION SHEET</button></div>
+      <div class="two-col wide-left">
+        <div class="stack">
+          <article class="panel">
+            <span class="panel-title">IDENTITY</span>
+            <div class="form-grid two">
+              <label>Working title<input id="songTitle" placeholder="Untitled Transmission"></label>
+              <label>Status<select id="songStatus"><option>Idea</option><option>Pre-production</option><option>Writing</option><option>Suno tests</option><option>Selected</option><option>Mixing</option><option>Release ready</option></select></label>
+            </div>
+            <label>Song thesis / what is this actually about?<textarea id="songThesis" placeholder="A man realizing that surviving the day has replaced actually living..."></textarea></label>
+            <label>Anchor image or phrase<input id="songAnchor" placeholder="have we all lost our way"></label>
+          </article>
+
+          <article class="panel">
+            <span class="panel-title">MUSICAL FRAME</span>
+            <div class="form-grid four">
+              <label>BPM<input id="songBpm" inputmode="numeric" placeholder="118"></label>
+              <label>Key<input id="songKey" placeholder="D"></label>
+              <label>Mode<select id="songMode"><option>Minor</option><option>Phrygian</option><option>Dorian</option><option>Modal / ambiguous</option></select></label>
+              <label>Target length<input id="songLength" placeholder="4:30"></label>
+            </div>
+            <div class="form-grid two">
+              <label>Groove<input id="songGroove" placeholder="steady dark dance pulse, bass-led"></label>
+              <label>Energy arc<select id="songEnergy"><option>Slow burn</option><option>Midnight drive</option><option selected>Build to crescendo</option><option>Immediate dance floor</option><option>Ritual / hypnotic</option></select></label>
+            </div>
+          </article>
+
+          <article class="panel">
+            <span class="panel-title">INSTRUMENT ROLES</span>
+            <div class="roles-grid">
+              <label>Bass<textarea id="roleBass" placeholder="melodic hook carrier; warm, forward"></textarea></label>
+              <label>Guitar<textarea id="roleGuitar" placeholder="shimmering chorus guitar; restrained until final third"></textarea></label>
+              <label>Synth<textarea id="roleSynth" placeholder="atmosphere and support; never dominate"></textarea></label>
+              <label>Drums<textarea id="roleDrums" placeholder="gated snare, dance pulse, no modern pop sheen"></textarea></label>
+              <label>Vocal<textarea id="roleVocal" placeholder="deep clear restrained baritone; low through chorus"></textarea></label>
+              <label>Wild card<textarea id="roleWild" placeholder="small psychedelic/prog arrangement surprise"></textarea></label>
+            </div>
+          </article>
+        </div>
+
+        <div class="stack">
+          <article class="panel sticky-panel">
+            <div class="panel-head"><div><span class="panel-title">PRODUCTION SHEET</span><h2 id="sheetTitle">No active sheet</h2></div><button class="ghost" id="copySheetBtn">COPY</button></div>
+            <div class="production-sheet" id="productionSheet"></div>
+            <div class="actions"><button class="secondary" id="saveSongBtn">SAVE SONG</button><button class="ghost" data-go="suno">SEND TO SUNO STUDIO</button></div>
+          </article>
+        </div>
+      </div>
+
+      <article class="panel">
+        <div class="panel-head"><div><span class="panel-title">ARRANGEMENT TIMELINE</span><h2>Sections</h2></div><button class="secondary" id="addSectionBtn">+ ADD SECTION</button></div>
+        <div class="timeline-editor" id="arrangementEditor"></div>
+      </article>
+    </section>
+
+    <section class="view" id="generations">
+      <div class="section-head"><div><p class="eyebrow">03 // ITERATION</p><h1>Generation Lab</h1><p>Track what Suno got right, what it broke, and what must stay locked in the next pass.</p></div><button class="primary" id="newGenerationBtn">+ NEW GENERATION</button></div>
+
+      <div class="two-col wide-left">
+        <div class="stack">
+          <article class="panel">
+            <span class="panel-title">CURRENT GENERATION</span>
+            <div class="form-grid two">
+              <label>Name / number<input id="genName" placeholder="Generation 07"></label>
+              <label>Source note<input id="genSource" placeholder="Suno remix from V6"></label>
+            </div>
+            <label>KEEP<textarea id="genKeep" placeholder="bass line; opening guitar; verse vocal tone"></textarea></label>
+            <label>LOSE<textarea id="genLose" placeholder="bright synth arp; high chorus vocal; metal guitar at 2:18"></textarea></label>
+            <label>ALMOST<textarea id="genAlmost" placeholder="chorus structure; final build"></textarea></label>
+            <label>LOCK<textarea id="genLock" placeholder="first 42 seconds; bass tone; verse delivery"></textarea></label>
+            <div class="score-grid">
+              <label>Vocal<input id="scoreVocal" type="range" min="1" max="10" value="5"><output>5</output></label>
+              <label>Bass<input id="scoreBass" type="range" min="1" max="10" value="5"><output>5</output></label>
+              <label>Guitar<input id="scoreGuitar" type="range" min="1" max="10" value="5"><output>5</output></label>
+              <label>Synth<input id="scoreSynth" type="range" min="1" max="10" value="5"><output>5</output></label>
+              <label>Chorus<input id="scoreChorus" type="range" min="1" max="10" value="5"><output>5</output></label>
+              <label>Build<input id="scoreBuild" type="range" min="1" max="10" value="5"><output>5</output></label>
+              <label>DNA<input id="scoreDna" type="range" min="1" max="10" value="5"><output>5</output></label>
+            </div>
+            <div class="actions"><button class="secondary" id="saveGenerationBtn">SAVE GENERATION</button><button class="primary" id="repairBtn">REPAIR NEXT GENERATION</button></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><div><span class="panel-title">LOCAL AUDIO ANALYSIS</span><h2>Measure before guessing</h2></div><span class="local-badge">STAYS ON DEVICE</span></div>
+            <p class="muted">Drop a downloaded track here. V3 reads duration, approximate BPM, RMS/peak, crest factor and section-energy shape locally. Nothing is uploaded.</p>
+            <input id="audioFile" type="file" accept="audio/*">
+            <button class="secondary" id="analyzeAudioBtn">ANALYZE AUDIO</button>
+            <div id="audioAnalysis" class="analysis-grid"></div>
+          </article>
+        </div>
+
+        <div class="stack">
+          <article class="panel sticky-panel">
+            <div class="panel-head"><div><span class="panel-title">REPAIR BRIEF</span><h2>Smallest useful correction</h2></div><button class="ghost" id="copyRepairBtn">COPY</button></div>
+            <div id="repairBrief" class="brief-output empty-state">Save or describe a generation, then build a repair brief. Locked elements will be carried forward explicitly.</div>
+            <button class="primary brain-action" data-brain-task="repair">ASK MR DARKNESS TO REFINE</button>
+          </article>
+          <article class="panel">
+            <span class="panel-title">A/B COMPARISON</span>
+            <div class="form-grid two"><label>Version A<select id="compareA"></select></label><label>Version B<select id="compareB"></select></label></div>
+            <button class="secondary" id="compareBtn">COMPARE</button>
+            <div id="comparison" class="comparison"></div>
+            <button class="ghost" id="combineBtn">BUILD VERSION C FROM BEST PARTS</button>
+          </article>
+        </div>
+      </div>
+
+      <article class="panel">
+        <div class="panel-head"><div><span class="panel-title">HISTORY</span><h2>Tracked generations</h2></div></div>
+        <div id="generationHistory" class="cards-grid"></div>
+      </article>
+    </section>
+
+    <section class="view" id="lyrics">
+      <div class="section-head"><div><p class="eyebrow">04 // WRITING ROOM</p><h1>Lyrics Lab</h1><p>Write for a mouth, not a mood board. Meter, anchor phrases and cliché pressure stay visible while you work.</p></div><button class="primary brain-action" data-brain-task="lyrics">ASK LYRIC WRITER</button></div>
+      <div class="two-col wide-left">
+        <article class="panel editor-panel">
+          <div class="panel-head"><div><span class="panel-title">DRAFT</span><h2 id="lyricsSongName">Active song</h2></div><button class="secondary" id="saveLyricsBtn">SAVE</button></div>
+          <textarea id="lyricsDraft" class="lyrics-editor" placeholder="Write or paste lyrics here..."></textarea>
+          <div class="editor-tools"><button class="ghost" id="meterBtn">CHECK METER</button><button class="ghost" id="clicheBtn">SCAN CLICHÉS</button><button class="ghost" id="selectionPhraseBtn">SAVE SELECTED PHRASE</button></div>
+        </article>
+        <div class="stack">
+          <article class="panel"><span class="panel-title">METER</span><div id="meterResults" class="line-analysis empty-state">Run the meter checker to see approximate syllable counts line by line.</div></article>
+          <article class="panel redline"><span class="panel-title">CLICHÉ PRESSURE</span><div id="clicheResults" class="line-analysis empty-state">Scan the draft for clusters of stock goth / AI language.</div></article>
+          <article class="panel"><div class="panel-head"><div><span class="panel-title">PHRASE BANK</span><h2>Keep the good fragments</h2></div><button class="ghost" id="addPhraseBtn">+ ADD</button></div><div id="phraseBank" class="phrase-bank"></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="vocal">
+      <div class="section-head"><div><p class="eyebrow">05 // SINGER IDENTITY</p><h1>Vocal DNA</h1><p>One persistent fictional singer. Songs can bend the performance, but they cannot replace the vocalist.</p></div><button class="secondary" id="saveVocalBtn">SAVE VOCAL DNA</button></div>
+      <div class="vocal-grid">
+        <article class="panel"><span class="panel-title">CORE VOICE</span><label>Register<textarea id="vRegister"></textarea></label><label>Placement<textarea id="vPlacement"></textarea></label><label>Melodic movement<textarea id="vMovement"></textarea></label></article>
+        <article class="panel"><span class="panel-title">DELIVERY</span><label>Character<textarea id="vDelivery"></textarea></label><label>Diction<textarea id="vDiction"></textarea></label><label>Harmony<textarea id="vHarmony"></textarea></label></article>
+        <article class="panel"><span class="panel-title">CHORUS BEHAVIOR</span><label>Rules<textarea id="vChorus"></textarea></label><label>Emotion<textarea id="vEmotion"></textarea></label></article>
+        <article class="panel redline"><span class="panel-title">FORBIDDEN</span><label>Never allow<textarea id="vForbidden"></textarea></label></article>
+      </div>
+      <article class="panel">
+        <div class="panel-head"><div><span class="panel-title">SONG-SPECIFIC PERFORMANCE</span><h2 id="vocalSongTitle">Active song</h2></div></div>
+        <textarea id="songVocalNote" placeholder="Colder and flatter in the verses; slight emotional break in the final chorus without rising in register."></textarea>
+        <button class="secondary" id="saveSongVocalBtn">SAVE TO SONG</button>
+      </article>
+    </section>
+
+    <section class="view" id="suno">
+      <div class="section-head"><div><p class="eyebrow">06 // GENERATION BAY</p><h1>Suno Studio</h1><p>Dense, copy-ready prompts with a hard ceiling. Positive direction and exclusions stay separate.</p></div><button class="primary brain-action" data-brain-task="suno">ASK SUNO ENGINEER</button></div>
+      <div class="two-col">
+        <article class="panel">
+          <span class="panel-title">DIRECTION</span>
+          <label>What should change this pass?<textarea id="sunoDirection" placeholder="Keep the bass and guitar. Remove the modern synth arp. Make the final third bigger without adding metal guitar."></textarea></label>
+          <div class="form-grid two"><label>Tempo<input id="sunoTempo" placeholder="118 BPM"></label><label>Priority<select id="sunoPriority"><option>Protect vocal</option><option>Protect groove</option><option>Protect arrangement</option><option>Protect locked generation traits</option></select></label></div>
+          <button class="secondary" id="buildSunoBtn">BUILD FROM SONG + CANON</button>
+        </article>
+        <div class="stack">
+          <article class="panel prompt-panel"><div class="panel-head"><div><span class="panel-title">STYLE PROMPT</span><span class="counter" id="styleCount">0 / 999</span></div><button class="ghost copy-btn" data-copy="stylePrompt">COPY</button></div><textarea id="stylePrompt" class="prompt-box" maxlength="999"></textarea></article>
+          <article class="panel redline prompt-panel"><div class="panel-head"><div><span class="panel-title">EXCLUDE PROMPT</span><span class="counter" id="excludeCount">0 / 999</span></div><button class="ghost copy-btn" data-copy="excludePrompt">COPY</button></div><textarea id="excludePrompt" class="prompt-box" maxlength="999"></textarea></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="vault">
+      <div class="section-head"><div><p class="eyebrow">07 // ARCHIVE</p><h1>Song Vault</h1><p>Every production sheet, lyric draft, generation, prompt and release state lives with the song.</p></div><button class="secondary" id="newSongFromVaultBtn">+ NEW SONG</button></div>
+      <div id="songVault" class="vault-grid"></div>
+    </section>
+
+    <section class="view" id="album">
+      <div class="section-head"><div><p class="eyebrow">08 // MACRO VIEW</p><h1>Album Director</h1><p>See the record as a record: tempo, energy, repeated structures, instrumentation balance and thematic overlap.</p></div><button class="primary brain-action" data-brain-task="album">ASK ALBUM DIRECTOR</button></div>
+      <div class="stats-grid album-stats">
+        <article class="stat"><span>TRACKS</span><strong id="albumTrackCount">0</strong><small>selected</small></article>
+        <article class="stat"><span>AVG BPM</span><strong id="albumAvgBpm">—</strong><small>tempo center</small></article>
+        <article class="stat"><span>BPM RANGE</span><strong id="albumBpmRange">—</strong><small>slow → fast</small></article>
+        <article class="stat"><span>CRESCENDO SONGS</span><strong id="albumCrescendos">0</strong><small>watch repetition</small></article>
+      </div>
+      <div class="two-col">
+        <article class="panel"><span class="panel-title">TRACK MAP</span><div id="albumMap" class="album-map"></div></article>
+        <article class="panel"><span class="panel-title">CONTINUITY FLAGS</span><div id="albumFlags" class="flag-list"></div></article>
+      </div>
+      <article class="panel"><span class="panel-title">SEQUENCE</span><div id="albumSequence" class="sequence"></div></article>
+    </section>
+
+    <section class="view" id="visual">
+      <div class="section-head"><div><p class="eyebrow">09 // IMAGE DEPARTMENT</p><h1>Visuals</h1><p>One recognizable Mr Darkness character and one visual world across cover art, posts and music-video frames.</p></div><button class="primary brain-action" data-brain-task="visual">ASK VISUAL DIRECTOR</button></div>
+      <div class="two-col wide-left">
+        <article class="panel"><div class="form-grid two"><label>Format<select id="visualFormat"><option>Album / EP cover</option><option>Character portrait</option><option>Music video frame</option><option>Instagram post</option><option>Poster</option><option>Scene sequence</option></select></label><label>Aspect<input id="visualAspect" placeholder="1:1"></label></div><label>Scene<textarea id="visualScene" placeholder="Mr Darkness at the far edge of a red-lit underground club, half-observed through smoke..."></textarea></label><label>Song-specific motif<textarea id="visualMotif" placeholder="corners / passageways / moving lights"></textarea></label><button class="secondary" id="buildVisualBtn">BUILD VISUAL BRIEF</button></article>
+        <article class="panel editor-panel"><div class="panel-head"><div><span class="panel-title">VISUAL BRIEF</span><h2 id="visualSongTitle">Active song</h2></div><button class="ghost" id="copyVisualBtn">COPY</button></div><textarea id="visualBrief" class="big-box"></textarea></article>
+      </div>
+    </section>
+
+    <section class="view" id="release">
+      <div class="section-head"><div><p class="eyebrow">10 // CAMPAIGN</p><h1>Release HQ</h1><p>Once the song is selected, turn the same mythology into artwork, teaser beats, posts and a release sequence.</p></div><button class="primary brain-action" data-brain-task="release">ASK RELEASE DIRECTOR</button></div>
+      <div class="two-col wide-left">
+        <article class="panel"><div class="form-grid two"><label>Release title<input id="releaseTitle" placeholder="Mr Darkness Mt Darkness"></label><label>Type<select id="releaseType"><option>Single</option><option>EP</option><option>Album</option></select></label></div><label>Core teaser moment<textarea id="releaseMoment" placeholder="first vocal entrance / chorus / final build"></textarea></label><label>Raw campaign thought<textarea id="releaseIdea" placeholder="Mr Darkness is coming..."></textarea></label><button class="secondary" id="buildReleaseBtn">BUILD CAMPAIGN BOARD</button></article>
+        <article class="panel editor-panel"><div class="panel-head"><div><span class="panel-title">CAMPAIGN BOARD</span><h2>Signal → Release → Afterimage</h2></div><button class="ghost" id="copyReleaseBtn">COPY</button></div><textarea id="releaseBoard" class="big-box"></textarea></article>
+      </div>
+    </section>
+  </main>
+
+  <aside class="brain-drawer" id="brainDrawer" aria-hidden="true">
+    <div class="drawer-head"><div><p class="eyebrow">MR DARKNESS // BRAIN</p><h2>Ask Mr Darkness</h2></div><button class="icon-btn" id="brainClose" aria-label="Close brain panel">×</button></div>
+    <div class="brain-status-card">
+      <div><span>CONNECTION</span><strong id="brainConnection">BROWSER BRIDGE</strong><small id="brainConnectionSub">Copies full context into your existing ChatGPT account.</small></div>
+      <button class="secondary" id="nativeConnectBtn">CONTINUE WITH CHATGPT</button>
+    </div>
+    <div class="mode-strip" id="brainModes">
+      <button class="active" data-mode="producer">Producer</button>
+      <button data-mode="song_doctor">Song Doctor</button>
+      <button data-mode="lyric_writer">Lyric Writer</button>
+      <button data-mode="suno_engineer">Suno Engineer</button>
+      <button data-mode="album_director">Album Director</button>
+      <button data-mode="visual_director">Visual Director</button>
+      <button data-mode="release_director">Release Director</button>
+    </div>
+    <div class="brain-messages" id="brainMessages"><div class="brain-message md"><span>MR DARKNESS</span><p>I already know the active song, production sheet, vocal DNA, generations, likes, don’ts and album context. Ask from where you are.</p></div></div>
+    <div class="brain-composer"><textarea id="brainInput" placeholder="The bass and guitar are right, but the chorus vocal went modern and the synth took over..."></textarea><button class="primary" id="brainSend">ASK</button></div>
+    <div class="brain-actions"><button class="ghost" id="copyBrainContext">COPY FULL CONTEXT</button><button class="ghost" id="openChatGPTBtn">OPEN CHATGPT</button><button class="ghost" id="clearBrainBtn">CLEAR</button></div>
+  </aside>
+  <div class="drawer-scrim" id="drawerScrim"></div>
+
+  <dialog id="settingsDialog">
+    <form method="dialog" class="dialog-card">
+      <div class="panel-head"><div><span class="panel-title">SETTINGS</span><h2>Mr Darkness V3</h2></div><button class="icon-btn" value="cancel">×</button></div>
+      <div class="settings-block"><span>AI ROUTE</span><strong>ChatGPT Plus first</strong><p>Browser mode copies full project context into ChatGPT. The packaged local Android build will use OpenAI's open-source Sign in with ChatGPT plan-sharing flow so eligible Plus/Pro usage can power the app without an API key.</p></div>
+      <div class="settings-block"><span>NATIVE BRIDGE</span><strong id="nativeStatus">Not detected in browser</strong><p>The same V3 frontend automatically switches to the local native bridge when installed in the Android shell.</p></div>
+      <div class="settings-block"><span>DATA</span><strong>Local-first</strong><p>Song projects, lyrics, scores and generation notes are stored locally in this browser build.</p><button type="button" class="ghost" id="exportBtn">EXPORT PROJECT JSON</button><button type="button" class="ghost" id="importBtn">IMPORT PROJECT JSON</button><input id="importFile" type="file" accept="application/json" hidden></div>
+      <button class="primary" value="default">DONE</button>
+    </form>
+  </dialog>
+
+  <dialog id="canonDialog">
+    <form method="dialog" class="dialog-card large-dialog">
+      <div class="panel-head"><div><span class="panel-title">CORE CANON</span><h2>Mr Darkness source of truth</h2></div><button class="icon-btn" value="cancel">×</button></div>
+      <label>Music<textarea id="canonMusic"></textarea></label>
+      <label>Production<textarea id="canonProduction"></textarea></label>
+      <label>Lyrics<textarea id="canonLyrics"></textarea></label>
+      <label>Visual<textarea id="canonVisual"></textarea></label>
+      <label>Hard exclusions<textarea id="canonExclusions"></textarea></label>
+      <button type="button" class="primary" id="saveCanonBtn">SAVE CORE</button>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+  <script src="native-bridge.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
