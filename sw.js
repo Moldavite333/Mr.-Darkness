@@ -1,4 +1,4 @@
-const CACHE='mr-darkness-hq-v2';
+const CACHE='mr-darkness-hq-v3';
 const ASSETS=['./','./index.html','./styles.css','./config.js','./app.js','./manifest.webmanifest'];
 
 self.addEventListener('install',event=>{
