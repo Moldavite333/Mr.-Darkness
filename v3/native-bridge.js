@@ -1,34 +1,110 @@
 (() => {
   'use strict';
 
+  const VERIFIED_KEY = 'mr-darkness-chatgpt-plan-verified-v1';
+  const MODEL_KEY = 'mr-darkness-chatgpt-plan-model-v1';
+  const STORE_KEY = 'mr-darkness-hq-v3';
+
   const getPlugin = () => {
     try {
       return window.Capacitor?.Plugins?.ChatGPTPlan || window.ChatGPTPlan || null;
     } catch { return null; }
   };
 
+  const isVerified = () => localStorage.getItem(VERIFIED_KEY) === 'true';
+  const setVerified = value => {
+    if (value) localStorage.setItem(VERIFIED_KEY, 'true');
+    else localStorage.removeItem(VERIFIED_KEY);
+  };
+
+  const getModels = async plugin => {
+    const result = await plugin.listModels();
+    return Array.isArray(result?.models) ? result.models.filter(m => m?.slug || m?.id) : [];
+  };
+
+  const saveModel = model => {
+    if (!model) return;
+    localStorage.setItem(MODEL_KEY, model);
+    try {
+      const state = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+      if (state?.brain) {
+        state.brain.model = model;
+        localStorage.setItem(STORE_KEY, JSON.stringify(state));
+      }
+    } catch {}
+  };
+
+  const chooseModel = models => {
+    const saved = localStorage.getItem(MODEL_KEY) || '';
+    if (saved && models.some(m => (m.slug || m.id) === saved)) return saved;
+    return models[0]?.slug || models[0]?.id || '';
+  };
+
+  async function verifyConnection(plugin) {
+    const raw = await plugin.getStatus();
+    if (!raw?.connected || !raw?.planSharing) {
+      setVerified(false);
+      throw new Error('ChatGPT sign-in finished without ChatGPT plan sharing. Reconnect and approve plan usage.');
+    }
+
+    const models = await getModels(plugin);
+    if (!models.length) {
+      setVerified(false);
+      throw new Error('ChatGPT is authorized, but no plan-sharing models were returned for this account.');
+    }
+
+    const model = chooseModel(models);
+    const test = await plugin.respond({
+      model,
+      instructions: 'Connection diagnostic only. Follow the user instruction exactly and do not add commentary.',
+      input: 'Reply exactly with the single word ONLINE.'
+    });
+
+    if (!test?.text || !/\bONLINE\b/i.test(test.text)) {
+      setVerified(false);
+      throw new Error('ChatGPT authorization succeeded, but the direct inference test did not complete correctly.');
+    }
+
+    saveModel(test.model || model);
+    setVerified(true);
+    return { available: true, ...raw, connected: true, verified: true, model: test.model || model, models };
+  }
+
   const bridge = {
     get available() { return Boolean(getPlugin()); },
 
     async status() {
       const plugin = getPlugin();
-      if (!plugin) return { available: false, connected: false, mode: 'browser' };
+      if (!plugin) return { available: false, connected: false, verified: false, mode: 'browser' };
       try {
-        const result = await plugin.getStatus();
-        return { available: true, ...result };
+        const raw = await plugin.getStatus();
+        if (!raw?.connected || !raw?.planSharing) {
+          setVerified(false);
+          return { available: true, ...raw, connected: false, verified: false, authorized: false };
+        }
+        const verified = isVerified();
+        return { available: true, ...raw, connected: verified, verified, authorized: true };
       } catch (error) {
-        return { available: true, connected: false, error: error?.message || String(error) };
+        setVerified(false);
+        return { available: true, connected: false, verified: false, error: error?.message || String(error) };
       }
     },
 
     async connect() {
       const plugin = getPlugin();
       if (!plugin) throw new Error('ChatGPT plan sharing is only available in the local Android build.');
-      return plugin.signIn({ agentName: 'Mr Darkness HQ' });
+
+      setVerified(false);
+      let raw = await plugin.getStatus().catch(() => null);
+      if (!raw?.connected || !raw?.planSharing) {
+        await plugin.signIn({ agentName: 'Mr Darkness HQ' });
+      }
+      return verifyConnection(plugin);
     },
 
     async disconnect() {
       const plugin = getPlugin();
+      setVerified(false);
       if (!plugin) return;
       return plugin.signOut();
     },
@@ -36,18 +112,154 @@
     async models() {
       const plugin = getPlugin();
       if (!plugin) return [];
-      const result = await plugin.listModels();
-      return Array.isArray(result?.models) ? result.models : [];
+      return getModels(plugin);
     },
 
     async ask({ model, instructions, input }) {
       const plugin = getPlugin();
       if (!plugin) throw new Error('Native ChatGPT bridge is not available in this browser build.');
-      const result = await plugin.respond({ model: model || '', instructions, input });
+      const raw = await plugin.getStatus();
+      if (!raw?.connected || !raw?.planSharing || !isVerified()) {
+        throw new Error('ChatGPT connection is not verified. Tap CONTINUE WITH CHATGPT first.');
+      }
+      const chosen = model || localStorage.getItem(MODEL_KEY) || '';
+      const result = await plugin.respond({ model: chosen, instructions, input });
       if (!result?.text) throw new Error(result?.error || 'ChatGPT returned no text.');
+      if (result.model) saveModel(result.model);
       return result;
     }
   };
+
+  function readState() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); }
+    catch { return null; }
+  }
+
+  function writeState(state) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch {}
+  }
+
+  function activeSong(state) {
+    return state?.songs?.find(s => s.id === state.activeSongId) || state?.songs?.[0] || null;
+  }
+
+  function modeInstruction(mode) {
+    const modes = {
+      producer: 'Act as Mr Darkness’s record producer. Think in arrangement, dynamics, instrumentation, transitions, mix perspective and song identity. Make specific production decisions.',
+      song_doctor: 'Act as a song doctor. Diagnose drift between generations and preserve locked traits while making the smallest useful corrections.',
+      lyric_writer: 'Act as Mr Darkness’s lyric writer/editor. Prioritize meter, memorable phrasing, concrete meaning and restraint. Avoid generic goth buzzword language.',
+      suno_engineer: 'Act as a Suno prompt engineer. Keep STYLE and EXCLUDE separate, dense and copy-ready. Each must remain under 1000 characters.',
+      album_director: 'Act as an album producer. Analyze continuity, contrast, sequence, tempo/energy shape and repeated arrangement habits.',
+      visual_director: 'Act as a visual director maintaining one recognizable Mr Darkness character and one 1980s underground world.',
+      release_director: 'Act as a release director. Preserve mystery, avoid influencer language, and build practical teaser/release sequences.'
+    };
+    return modes[mode] || modes.producer;
+  }
+
+  function buildInstructions(state, mode) {
+    const song = activeSong(state);
+    const albumSongs = (state?.songs || []).filter(s => /selected|mixing|release ready/i.test(s.status || ''));
+    const album = (albumSongs.length ? albumSongs : (state?.songs || [])).map(s => ({
+      title: s.title, status: s.status, bpm: s.bpm, mode: s.mode, energy: s.energy,
+      targetLength: s.targetLength, thesis: s.thesis
+    }));
+    const latestGeneration = song?.generations?.[song.generations.length - 1] || null;
+    const context = {
+      canon: state?.canon,
+      vocalDNA: state?.vocal,
+      likes: state?.preferences?.likes || [],
+      dislikes: state?.preferences?.dislikes || [],
+      activeSong: song ? {
+        title: song.title, status: song.status, thesis: song.thesis, anchor: song.anchor,
+        bpm: song.bpm, key: song.key, mode: song.mode, targetLength: song.targetLength,
+        groove: song.groove, energy: song.energy, roles: song.roles, arrangement: song.arrangement,
+        lyrics: song.lyrics, songVocalNote: song.songVocalNote, suno: song.suno, latestGeneration
+      } : null,
+      album
+    };
+    return [
+      'You are working inside MR DARKNESS HQ, a production workstation for one recurring fictional 1980s goth/darkwave artist.',
+      modeInstruction(mode),
+      'Treat the supplied canon, vocal DNA, likes/don’ts, active song and generation locks as source-of-truth constraints. Diagnose drift specifically. For Suno prompts, target 850–900 characters and never exceed 999 characters per prompt.',
+      `PROJECT CONTEXT\n${JSON.stringify(context, null, 2)}`
+    ].join('\n\n');
+  }
+
+  function renderStoredMessages(state) {
+    const host = document.getElementById('brainMessages');
+    if (!host) return;
+    const messages = state?.brain?.messages || [];
+    host.replaceChildren();
+    if (!messages.length) {
+      const box = document.createElement('div');
+      box.className = 'brain-message md';
+      const tag = document.createElement('span'); tag.textContent = 'MR DARKNESS';
+      const p = document.createElement('p'); p.textContent = 'I already know the active song, production sheet, vocal DNA, generations, likes, don’ts and album context. Ask from where you are.';
+      box.append(tag, p); host.append(box); return;
+    }
+    for (const message of messages) {
+      const box = document.createElement('div');
+      box.className = `brain-message ${message.role === 'user' ? 'user' : 'md'}`;
+      const tag = document.createElement('span');
+      tag.textContent = `${message.role === 'user' ? 'YOU' : 'MR DARKNESS'} // ${(message.mode || 'producer').replaceAll('_', ' ').toUpperCase()}`;
+      const p = document.createElement('p'); p.textContent = message.text || '';
+      box.append(tag, p); host.append(box);
+    }
+    host.scrollTop = host.scrollHeight;
+  }
+
+  function addStoredMessage(role, text, mode) {
+    const state = readState();
+    if (!state) return;
+    if (!state.brain) state.brain = { mode: mode || 'producer', messages: [], model: '' };
+    if (!Array.isArray(state.brain.messages)) state.brain.messages = [];
+    state.brain.messages.push({ role, text, mode: mode || state.brain.mode || 'producer', at: Date.now() });
+    state.brain.messages = state.brain.messages.slice(-40);
+    writeState(state);
+    renderStoredMessages(state);
+  }
+
+  async function nativeAskFromUi() {
+    const input = document.getElementById('brainInput');
+    const button = document.getElementById('brainSend');
+    const text = String(input?.value || '').trim();
+    if (!text || !button) return;
+
+    const state = readState();
+    const mode = state?.brain?.mode || 'producer';
+    addStoredMessage('user', text, mode);
+    input.value = '';
+    button.disabled = true;
+    button.textContent = 'THINKING…';
+
+    try {
+      const status = await bridge.status();
+      if (!status.connected) throw new Error('ChatGPT is not verified yet. Tap CONTINUE WITH CHATGPT, let the connection test finish, then ASK again.');
+      const freshState = readState();
+      const result = await bridge.ask({
+        model: freshState?.brain?.model || localStorage.getItem(MODEL_KEY) || '',
+        instructions: buildInstructions(freshState, mode),
+        input: text
+      });
+      addStoredMessage('assistant', result.text, mode);
+    } catch (error) {
+      addStoredMessage('assistant', `Connection problem: ${error?.message || String(error)}`, mode);
+    } finally {
+      button.disabled = false;
+      button.textContent = 'ASK';
+    }
+  }
+
+  // In the Android shell, ASK must never silently fall back to opening chatgpt.com.
+  // Capture the button before the browser-fallback handler in app.js can run.
+  document.addEventListener('click', event => {
+    if (!getPlugin()) return;
+    const askButton = event.target?.closest?.('#brainSend');
+    if (!askButton) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    nativeAskFromUi();
+  }, true);
 
   window.MDNative = bridge;
 })();
