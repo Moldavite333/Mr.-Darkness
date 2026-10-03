@@ -57,4 +57,18 @@ if (!gradle.includes(marker)) {
 }
 
 run('npx', ['cap', 'sync', 'android']);
-console.log('Mr Darkness Android shell prepared with verified local ChatGPT plan-sharing bridge.');
+
+// The native ChatGPT bridge performs its own HTTPS requests after the browser callback.
+// Make the permission explicit so token exchange, model discovery and Responses requests can resolve/connect.
+const manifestPath = resolve(androidRoot, 'app/src/main/AndroidManifest.xml');
+let manifest = await readFile(manifestPath, 'utf8');
+const internetPermission = '<uses-permission android:name="android.permission.INTERNET" />';
+if (!manifest.includes('android.permission.INTERNET')) {
+  manifest = manifest.replace(/<manifest\b[^>]*>/, match => `${match}\n    ${internetPermission}`);
+  await writeFile(manifestPath, manifest, 'utf8');
+}
+if (!manifest.includes('android.permission.INTERNET')) {
+  throw new Error('Android INTERNET permission could not be added to the generated manifest.');
+}
+
+console.log('Mr Darkness Android shell prepared with verified local ChatGPT plan-sharing bridge and network permission.');
