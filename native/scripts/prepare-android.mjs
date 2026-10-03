@@ -5,7 +5,6 @@ import { spawnSync } from 'node:child_process';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const nativeRoot = resolve(here, '..');
-const repoRoot = resolve(nativeRoot, '..');
 const androidRoot = resolve(nativeRoot, 'android');
 const javaTarget = resolve(androidRoot, 'app/src/main/java/com/moldavite/mrdarkness');
 const pluginSource = resolve(nativeRoot, 'android-plugin');
@@ -28,6 +27,18 @@ for (const name of ['ChatGPTPlanPlugin.java', 'LoopbackCallbackServer.java', 'Ma
   await cp(resolve(pluginSource, name), resolve(javaTarget, name));
 }
 
+// ChatGPT plan-sharing currently requires Responses API `input` to be an array.
+// Keep the readable source plugin simple, then enforce the current OpenAI contract in the generated Android source.
+const generatedPlugin = resolve(javaTarget, 'ChatGPTPlanPlugin.java');
+let pluginJava = await readFile(generatedPlugin, 'utf8');
+const oldInputLine = '        payload.put("input", input);';
+const newInputLine = '        payload.put("input", new JSONArray().put(new JSONObject().put("role", "user").put("content", input)));';
+if (!pluginJava.includes(oldInputLine)) {
+  throw new Error('Could not patch ChatGPTPlanPlugin.java: expected Responses input line was not found.');
+}
+pluginJava = pluginJava.replace(oldInputLine, newInputLine);
+await writeFile(generatedPlugin, pluginJava, 'utf8');
+
 const gradlePath = resolve(androidRoot, 'app/build.gradle');
 let gradle = await readFile(gradlePath, 'utf8');
 const marker = '// MR_DARKNESS_CHATGPT_PLAN_DEPENDENCIES';
@@ -37,4 +48,4 @@ if (!gradle.includes(marker)) {
 }
 
 run('npx', ['cap', 'sync', 'android']);
-console.log('Mr Darkness Android shell prepared with local ChatGPT plan-sharing bridge.');
+console.log('Mr Darkness Android shell prepared with verified local ChatGPT plan-sharing bridge.');
