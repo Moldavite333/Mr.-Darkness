@@ -46,13 +46,33 @@ if (!pluginJava.includes(oldLaunch)) {
   throw new Error('Could not patch ChatGPTPlanPlugin.java: expected authorization launch block was not found.');
 }
 pluginJava = pluginJava.replace(oldLaunch, newLaunch);
+
+// Some Android devices/networks can resolve OpenAI in Chrome while native Java/OkHttp DNS fails.
+// Use DNS-over-HTTPS with fixed bootstrap resolver IPs for native token/model/response calls,
+// then fall back to Android's system resolver if DoH itself fails.
+const importAnchor = 'import okhttp3.FormBody;';
+if (!pluginJava.includes(importAnchor)) {
+  throw new Error('Could not patch ChatGPTPlanPlugin.java: OkHttp import anchor was not found.');
+}
+pluginJava = pluginJava.replace(importAnchor, `import okhttp3.Dns;\nimport okhttp3.FormBody;\nimport okhttp3.dnsoverhttps.DnsOverHttps;`);
+pluginJava = pluginJava.replace('import java.net.URI;', 'import java.net.InetAddress;\nimport java.net.URI;\nimport java.net.UnknownHostException;');
+
+const oldHttpClient = '    private final OkHttpClient http = new OkHttpClient.Builder().retryOnConnectionFailure(true).build();';
+const newHttpClient = `    private static OkHttpClient buildHttpClient() {\n        try {\n            OkHttpClient bootstrap = new OkHttpClient.Builder().retryOnConnectionFailure(true).build();\n            DnsOverHttps doh = new DnsOverHttps.Builder()\n                .client(bootstrap)\n                .url(HttpUrl.get("https://dns.google/dns-query"))\n                .bootstrapDnsHosts(\n                    InetAddress.getByAddress(new byte[]{8, 8, 8, 8}),\n                    InetAddress.getByAddress(new byte[]{8, 8, 4, 4})\n                )\n                .build();\n            Dns resilientDns = hostname -> {\n                try {\n                    return doh.lookup(hostname);\n                } catch (UnknownHostException dohFailure) {\n                    return Dns.SYSTEM.lookup(hostname);\n                }\n            };\n            return new OkHttpClient.Builder()\n                .dns(resilientDns)\n                .retryOnConnectionFailure(true)\n                .build();\n        } catch (Exception setupFailure) {\n            return new OkHttpClient.Builder().retryOnConnectionFailure(true).build();\n        }\n    }\n\n    private final OkHttpClient http = buildHttpClient();`;
+if (!pluginJava.includes(oldHttpClient)) {
+  throw new Error('Could not patch ChatGPTPlanPlugin.java: expected OkHttp client line was not found.');
+}
+pluginJava = pluginJava.replace(oldHttpClient, newHttpClient);
 await writeFile(generatedPlugin, pluginJava, 'utf8');
 
 const gradlePath = resolve(androidRoot, 'app/build.gradle');
 let gradle = await readFile(gradlePath, 'utf8');
 const marker = '// MR_DARKNESS_CHATGPT_PLAN_DEPENDENCIES';
 if (!gradle.includes(marker)) {
-  gradle = gradle.replace(/dependencies\s*\{/, match => `${match}\n    ${marker}\n    implementation "androidx.security:security-crypto:1.1.0"\n    implementation "com.squareup.okhttp3:okhttp:4.12.0"\n    implementation "com.nimbusds:nimbus-jose-jwt:10.10"`);
+  gradle = gradle.replace(/dependencies\s*\{/, match => `${match}\n    ${marker}\n    implementation "androidx.security:security-crypto:1.1.0"\n    implementation "com.squareup.okhttp3:okhttp:4.12.0"\n    implementation "com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0"\n    implementation "com.nimbusds:nimbus-jose-jwt:10.10"`);
+  await writeFile(gradlePath, gradle, 'utf8');
+} else if (!gradle.includes('okhttp-dnsoverhttps')) {
+  gradle = gradle.replace('implementation "com.squareup.okhttp3:okhttp:4.12.0"', 'implementation "com.squareup.okhttp3:okhttp:4.12.0"\n    implementation "com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0"');
   await writeFile(gradlePath, gradle, 'utf8');
 }
 
@@ -71,4 +91,4 @@ if (!manifest.includes('android.permission.INTERNET')) {
   throw new Error('Android INTERNET permission could not be added to the generated manifest.');
 }
 
-console.log('Mr Darkness Android shell prepared with verified local ChatGPT plan-sharing bridge and network permission.');
+console.log('Mr Darkness Android shell prepared with verified local ChatGPT plan-sharing bridge, network permission, and DoH DNS fallback.');
