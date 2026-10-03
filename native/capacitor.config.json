@@ -1,0 +1,11 @@
+{
+  "appId": "com.moldavite.mrdarkness",
+  "appName": "Mr Darkness",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
