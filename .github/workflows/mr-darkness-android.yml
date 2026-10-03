@@ -32,6 +32,12 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Keep stable debug signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: mr-darkness-v3-debug-signing-v1
+
       - name: Validate V3 JavaScript
         run: |
           node --check v3/app.js
