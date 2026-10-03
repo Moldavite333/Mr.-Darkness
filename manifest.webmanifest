@@ -1,1 +1,25 @@
-{"name":"Mr Darkness HQ","short_name":"Mr Darkness","start_url":"./","display":"standalone","background_color":"#070607","theme_color":"#080708","description":"Creative control system for the Mr Darkness music project","icons":[]}
+{
+  "id": "./",
+  "name": "Mr Darkness HQ",
+  "short_name": "Mr Darkness",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070607",
+  "theme_color": "#080708",
+  "description": "Creative control system for the Mr Darkness music project",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
+}
