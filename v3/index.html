@@ -207,7 +207,24 @@
     </section>
 
     <section class="view" id="lyrics">
-      <div class="section-head"><div><p class="eyebrow">04 // WRITING ROOM</p><h1>Lyrics Lab</h1><p>The darkness comes from the idea, not the vocabulary. Start with a human observation, find the contradiction, then make it sing.</p></div><button class="primary brain-action" data-brain-task="lyrics">OPEN LYRIC BRAIN</button></div>
+      <div class="section-head">
+        <div><p class="eyebrow">04 // WRITING ROOM</p><h1>Lyrics Lab</h1><p>The darkness comes from the idea, not the vocabulary. Start with a human observation, find the contradiction, then make it sing.</p></div>
+        <div class="section-actions">
+          <button class="secondary" id="newLyricSongBtn">+ NEW SONG</button>
+          <button class="primary brain-action" data-brain-task="lyrics">OPEN LYRIC BRAIN</button>
+        </div>
+      </div>
+
+      <article class="panel lyric-song-strip">
+        <div>
+          <span class="panel-title">CURRENT LYRIC SONG</span>
+          <input id="lyricsTitle" class="lyrics-title-input" value="Untitled Transmission" aria-label="Current lyric song title">
+        </div>
+        <div class="lyric-song-actions">
+          <button class="ghost" id="renameLyricSongBtn">RENAME</button>
+          <button class="ghost" id="openLyricVaultBtn">OPEN SONG VAULT</button>
+        </div>
+      </article>
 
       <article class="panel lyric-thought-engine">
         <div class="panel-head"><div><span class="panel-title">THOUGHT ENGINE</span><h2>What are you actually saying?</h2></div><button class="secondary" id="saveLyricDNA">SAVE THOUGHT</button></div>
