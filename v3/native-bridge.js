@@ -278,6 +278,8 @@
     if (!Array.isArray(state.brain.messages)) state.brain.messages = [];
     state.brain.messages.push({ role, text, mode: mode || state.brain.mode || 'producer', at: Date.now() });
     state.brain.messages = state.brain.messages.slice(-40);
+    const song = activeSong(state);
+    if (song) song.brainMessages = state.brain.messages.slice(-40);
     writeState(state);
     renderStoredMessages(state);
   }
