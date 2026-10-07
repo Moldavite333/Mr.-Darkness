@@ -270,6 +270,16 @@
           </article>
         </div>
       </div>
+
+      <article class="panel suno-lyrics-export">
+        <div class="panel-head">
+          <div><span class="panel-title">SUNO LYRIC EXPORT</span><h2>Clean copy — only what Suno should see</h2></div>
+          <button class="primary" id="copySunoLyricsBtn">COPY FOR SUNO</button>
+        </div>
+        <p class="muted">Automatically strips markdown, timestamps and performance notes while preserving useful section tags such as [Verse 1], [Chorus], [Bridge], [Instrumental] and [Outro]. Your working lyric sheet above stays untouched.</p>
+        <textarea id="sunoLyricsExport" class="suno-lyrics-box" readonly spellcheck="false" aria-label="Suno-ready lyric export"></textarea>
+        <div id="sunoLyricsStatus" class="export-status">Nothing removed yet.</div>
+      </article>
     </section>
 
     <section class="view" id="vocal">
