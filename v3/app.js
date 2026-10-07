@@ -104,12 +104,51 @@
     } catch { return null; }
   }
 
+  function normalizeState(raw) {
+    const defaults=baseState();
+    const out=raw && typeof raw==='object' ? raw : defaults;
+    out.version=3;
+    out.canon={...defaults.canon,...(out.canon||{})};
+    out.vocal={...defaults.vocal,...(out.vocal||{})};
+    out.preferences={
+      likes:Array.isArray(out.preferences?.likes)?out.preferences.likes:defaults.preferences.likes,
+      dislikes:Array.isArray(out.preferences?.dislikes)?out.preferences.dislikes:defaults.preferences.dislikes
+    };
+    const sourceSongs=Array.isArray(out.songs)&&out.songs.length?out.songs:[starterSong()];
+    out.songs=sourceSongs.map(song=>{
+      const fresh=starterSong();
+      return {
+        ...fresh,
+        ...song,
+        roles:{...fresh.roles,...(song?.roles||{})},
+        arrangement:Array.isArray(song?.arrangement)?song.arrangement:fresh.arrangement,
+        phraseBank:Array.isArray(song?.phraseBank)?song.phraseBank:[],
+        generations:Array.isArray(song?.generations)?song.generations:[],
+        lyricLab:{...fresh.lyricLab,...(song?.lyricLab||{})},
+        suno:{...fresh.suno,...(song?.suno||{})},
+        release:{...fresh.release,...(song?.release||{})}
+      };
+    });
+    if(!out.songs.some(s=>s.id===out.activeSongId))out.activeSongId=out.songs[0].id;
+    const ids=new Set(out.songs.map(s=>s.id));
+    const seq=Array.isArray(out.album?.sequence)?out.album.sequence.filter(id=>ids.has(id)):[];
+    for(const s of out.songs)if(!seq.includes(s.id))seq.push(s.id);
+    out.album={title:out.album?.title||'Mr Darkness',sequence:seq};
+    out.brain={
+      mode:out.brain?.mode||'producer',
+      messages:Array.isArray(out.brain?.messages)?out.brain.messages.slice(-40):[],
+      model:out.brain?.model||''
+    };
+    out.settings={...defaults.settings,...(out.settings||{})};
+    return out;
+  }
+
   function loadState() {
     try {
       const stored = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
-      if (stored) return stored;
+      if (stored) return normalizeState(stored);
     } catch {}
-    return migrateV2() || baseState();
+    return normalizeState(migrateV2() || baseState());
   }
 
   let state = loadState();
@@ -530,9 +569,45 @@
   function browserPrompt(userText,mode=state.brain.mode){return [`You are working inside MR DARKNESS HQ, a production workstation for one recurring fictional 1980s goth/darkwave artist.`,brainInstructions(mode),`Treat the supplied canon, vocal DNA, likes/don'ts, active production sheet and generation locks as source-of-truth constraints. Do not flatter. Diagnose drift specifically. For Suno prompts, target 850–900 characters and never exceed 999 per prompt.`,`\nPROJECT CONTEXT\n${JSON.stringify(projectContext(),null,2)}`,`\nUSER REQUEST\n${userText}`].join('\n\n')}
   function openBrain(){ $('brainDrawer').classList.add('open');$('drawerScrim').classList.add('show');$('brainDrawer').setAttribute('aria-hidden','false');setTimeout(()=>$('brainInput').focus(),150)}
   function closeBrain(){ $('brainDrawer').classList.remove('open');$('drawerScrim').classList.remove('show');$('brainDrawer').setAttribute('aria-hidden','true')}
-  function addBrainMessage(role,text){state.brain.messages.push({role,text,mode:state.brain.mode,at:Date.now()});state.brain.messages=state.brain.messages.slice(-40);save();renderBrainMessages()}
+  function addBrainMessage(role,text){if(!state.brain)state.brain={mode:'producer',messages:[],model:''};if(!Array.isArray(state.brain.messages))state.brain.messages=[];state.brain.messages.push({role,text,mode:state.brain.mode||'producer',at:Date.now()});state.brain.messages=state.brain.messages.slice(-40);save();renderBrainMessages()}
   function renderBrainMessages(){const msgs=state.brain.messages||[];$('brainMessages').innerHTML=msgs.length?msgs.map((m,i)=>`<div class="brain-message ${m.role==='user'?'user':'md'}"><div class="brain-message-head"><span>${m.role==='user'?'YOU':'MR DARKNESS'} // ${escapeHtml((m.mode||'producer').replaceAll('_',' ').toUpperCase())}</span><button class="message-copy" data-copy-brain="${i}" type="button">COPY</button></div><p>${escapeHtml(m.text)}</p></div>`).join(''):'<div class="brain-message md"><div class="brain-message-head"><span>MR DARKNESS</span></div><p>I already know the active song, production sheet, vocal DNA, generations, likes, don’ts and album context. Ask from where you are.</p></div>';$('brainMessages').scrollTop=$('brainMessages').scrollHeight}
-  async function refreshNativeStatus(){const status=await window.MDNative.status();const btn=$('nativeConnectBtn');if(status.available&&status.connected){$('brainConnection').textContent='CHATGPT PLAN CONNECTED';$('brainConnectionSub').textContent=status.email?`Signed in as ${status.email}`:'Using eligible ChatGPT plan usage';$('brainLabel').textContent='CHATGPT ONLINE';$('brainBtn').classList.add('native');$('nativeStatus').textContent='Connected';btn.textContent='CONNECTED';btn.disabled=true;if(!state.brain.model){const models=await window.MDNative.models();state.brain.model=models?.[0]?.slug||models?.[0]?.id||'';save()}}else if(status.available){$('brainConnection').textContent='NATIVE BRIDGE READY';$('brainConnectionSub').textContent='Connect your ChatGPT account to use plan sharing.';$('nativeStatus').textContent='Detected — not signed in';btn.textContent='CONTINUE WITH CHATGPT';btn.disabled=false}else{$('brainConnection').textContent='BROWSER BRIDGE';$('brainConnectionSub').textContent='Copies full context into your existing ChatGPT account.';$('nativeStatus').textContent='Not detected in browser';btn.textContent='CONTINUE WITH CHATGPT';btn.disabled=false}}
+  async function refreshNativeStatus(){
+    const btn=$('nativeConnectBtn');
+    try{
+      const status=await window.MDNative.status();
+      if(status.available&&status.connected){
+        $('brainConnection').textContent='CHATGPT PLAN CONNECTED';
+        $('brainConnectionSub').textContent=status.email?'Signed in as '+status.email:'Using eligible ChatGPT plan usage';
+        $('brainLabel').textContent='CHATGPT ONLINE';
+        $('brainBtn').classList.add('native');
+        $('nativeStatus').textContent='Connected';
+        btn.textContent='CONNECTED';btn.disabled=true;
+        if(!state.brain.model){
+          try{
+            const models=await window.MDNative.models();
+            state.brain.model=models?.[0]?.slug||models?.[0]?.id||'';
+            save();
+          }catch{}
+        }
+      }else if(status.available){
+        $('brainConnection').textContent=status.authorized?'CHATGPT AUTHORIZED — CHECK CONNECTION':'NATIVE BRIDGE READY';
+        $('brainConnectionSub').textContent=status.error||'Connect your ChatGPT account to use plan sharing.';
+        $('nativeStatus').textContent=status.error||'Detected — not signed in';
+        btn.textContent=status.authorized?'RETRY CONNECTION TEST':'CONTINUE WITH CHATGPT';
+        btn.disabled=false;
+      }else{
+        $('brainConnection').textContent='BROWSER BRIDGE';
+        $('brainConnectionSub').textContent='Copies only the requested context into your existing ChatGPT account.';
+        $('nativeStatus').textContent='Not detected in browser';
+        btn.textContent='CONTINUE WITH CHATGPT';btn.disabled=false;
+      }
+    }catch(err){
+      $('brainConnection').textContent='CONNECTION CHECK FAILED';
+      $('brainConnectionSub').textContent=err?.message||String(err);
+      $('nativeStatus').textContent=err?.message||'Connection check failed';
+      btn.textContent='RETRY';btn.disabled=false;
+    }
+  }
   async function connectNative(){if(!window.MDNative.available){toast('The direct Plus connection activates in the local Android build. This browser build can still hand off full context to ChatGPT.');return}try{$('nativeConnectBtn').disabled=true;$('nativeConnectBtn').textContent='CONNECTING…';await window.MDNative.connect();await refreshNativeStatus();toast('ChatGPT plan connected.')}catch(err){toast(err.message);$('nativeConnectBtn').disabled=false;$('nativeConnectBtn').textContent='CONTINUE WITH CHATGPT'}}
   async function askBrain(){const input=$('brainInput');const text=clean(input.value);if(!text)return;addBrainMessage('user',text);input.value='';$('brainSend').disabled=true;$('brainSend').textContent='THINKING…';try{const status=await window.MDNative.status();if(status.available&&status.connected){const result=await window.MDNative.ask({model:state.brain.model,instructions:browserPrompt('',state.brain.mode),input:text});addBrainMessage('assistant',result.text)}else{const full=browserPrompt(text,state.brain.mode);await copyText(full);addBrainMessage('assistant','Full project context copied. I opened ChatGPT so you can paste it there; the browser prototype cannot safely hold ChatGPT plan tokens. The packaged local build will answer here directly.');window.open('https://chatgpt.com/','_blank','noopener')}}catch(err){addBrainMessage('assistant',`Connection problem: ${err.message}`)}finally{$('brainSend').disabled=false;$('brainSend').textContent='ASK'}}
   async function copyFullContext(){try{await copyText(browserPrompt(clean($('brainInput').value)||'Continue working on the active Mr Darkness project.',state.brain.mode));toast('Full Mr Darkness context copied.')}catch(err){toast(err?.message||'Copy failed.')}}
@@ -543,8 +618,14 @@
   function hydrateCanonDialog(){ $('canonMusic').value=state.canon.music;$('canonProduction').value=state.canon.production;$('canonLyrics').value=state.canon.lyrics;$('canonVisual').value=state.canon.visual;$('canonExclusions').value=state.canon.exclusions }
   function saveCanon(){state.canon={music:clean($('canonMusic').value),production:clean($('canonProduction').value),lyrics:clean($('canonLyrics').value),visual:clean($('canonVisual').value),exclusions:clean($('canonExclusions').value)};save('CORE CANON SAVED');$('canonDialog').close();toast('Core Mr Darkness canon updated.')}
   function exportState(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`mr-darkness-v3-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-  async function importState(file){try{const data=JSON.parse(await file.text());if(!data||!Array.isArray(data.songs))throw new Error('Not a Mr Darkness V3 project file.');state=data;save('PROJECT IMPORTED');renderAll();toast('Project imported.')}catch(err){toast(err.message)}}
+  async function importState(file){try{const data=JSON.parse(await file.text());if(!data||!Array.isArray(data.songs))throw new Error('Not a Mr Darkness V3 project file.');state=normalizeState(data);save('PROJECT IMPORTED');renderAll();toast('Project imported.')}catch(err){toast(err.message)}}
 
+  function debounce(fn,wait=450){let timer;return (...args)=>{clearTimeout(timer);timer=setTimeout(()=>fn(...args),wait)}}
+  const autosaveBuild=debounce(()=>{try{captureBuild();syncArrangementFromDom();save('AUTOSAVED')}catch{}});
+  const autosaveLyrics=debounce(()=>{try{syncLyricThoughtFromDom();save('AUTOSAVED')}catch{}});
+  const autosaveSuno=debounce(()=>{try{const s=activeSong();s.suno={style:$('stylePrompt').value,exclude:$('excludePrompt').value};save('AUTOSAVED')}catch{}});
+  const autosaveVisual=debounce(()=>{try{activeSong().visualBrief=$('visualBrief').value;save('AUTOSAVED')}catch{}});
+  const autosaveRelease=debounce(()=>{try{activeSong().releaseBoard=$('releaseBoard').value;save('AUTOSAVED')}catch{}});
   function renderAll(){renderControl();hydrateBuild();renderGenerationLab();renderLyrics();hydrateVocal();hydrateSuno();renderVault();renderAlbum();hydrateVisual();hydrateRelease();renderBrainMessages();renderBrainModes();refreshNativeStatus()}
 
   document.addEventListener('click',e=>{
@@ -567,15 +648,16 @@
   $('buildSheetBtn').addEventListener('click',buildSheet);$('saveSongBtn').addEventListener('click',()=>{captureBuild();syncArrangementFromDom();activeSong().productionSheet=buildProductionSheetText();save('SONG SAVED');renderControl();toast('Song saved.')});
   $('copySheetBtn').addEventListener('click',async()=>{try{await copyText(buildProductionSheetText());toast('Production sheet copied.')}catch(err){toast(err?.message||'Copy failed.')}});
   $('addSectionBtn').addEventListener('click',()=>{syncArrangementFromDom();activeSong().arrangement.push({start:'',name:'New section',notes:''});renderArrangement()});
-  $('songEnergy').addEventListener('change',()=>{const s=activeSong();if(confirm('Rebuild the arrangement template for this energy arc?')){s.energy=$('songEnergy').value;s.arrangement=defaultArrangement(s.energy);renderArrangement()}});
+  $('songEnergy').addEventListener('change',()=>{const s=activeSong();if(confirm('Rebuild the arrangement template for this energy arc?')){s.energy=$('songEnergy').value;s.arrangement=defaultArrangement(s.energy);renderArrangement()}autosaveBuild()});
+  $('build').addEventListener('input',e=>{if(e.target.matches('input,textarea,select'))autosaveBuild()});$('arrangementEditor').addEventListener('input',autosaveBuild);
   $('newGenerationBtn').addEventListener('click',newGeneration);$('saveGenerationBtn').addEventListener('click',saveGeneration);$('repairBtn').addEventListener('click',buildRepair);$('copyRepairBtn').addEventListener('click',()=>copyValue('repairBrief'));$('compareBtn').addEventListener('click',compareGenerations);$('combineBtn').addEventListener('click',combineBest);$('analyzeAudioBtn').addEventListener('click',analyzeAudio);
   $$('.score-grid input[type="range"]').forEach(x=>x.addEventListener('input',()=>x.nextElementSibling.textContent=x.value));
-  $('saveLyricsBtn').addEventListener('click',saveLyrics);$('saveLyricDNA').addEventListener('click',saveLyricThought);$('meterBtn').addEventListener('click',checkMeter);$('clicheBtn').addEventListener('click',scanCliches);$('humanBtn').addEventListener('click',humanTest);$('copyLyricsBtn').addEventListener('click',()=>copyValue('lyricsDraft'));$('selectLyricsBtn').addEventListener('click',()=>selectField('lyricsDraft'));$('selectionPhraseBtn').addEventListener('click',addSelectedPhrase);$('addPhraseBtn').addEventListener('click',()=>addPhrase());
+  $('saveLyricsBtn').addEventListener('click',saveLyrics);$('saveLyricDNA').addEventListener('click',saveLyricThought);$('meterBtn').addEventListener('click',checkMeter);$('clicheBtn').addEventListener('click',scanCliches);$('humanBtn').addEventListener('click',humanTest);$('copyLyricsBtn').addEventListener('click',()=>copyValue('lyricsDraft'));$('selectLyricsBtn').addEventListener('click',()=>selectField('lyricsDraft'));$('selectionPhraseBtn').addEventListener('click',addSelectedPhrase);$('addPhraseBtn').addEventListener('click',()=>addPhrase());$('lyrics').addEventListener('input',e=>{if(e.target.matches('input,textarea,select'))autosaveLyrics()});
   $('saveVocalBtn').addEventListener('click',saveVocal);$('saveSongVocalBtn').addEventListener('click',()=>{activeSong().songVocalNote=clean($('songVocalNote').value);save('SONG VOCAL NOTE SAVED');toast('Song-specific vocal direction saved.')});
-  $('buildSunoBtn').addEventListener('click',buildSuno);$('stylePrompt').addEventListener('input',updateCounters);$('excludePrompt').addEventListener('input',updateCounters);
+  $('buildSunoBtn').addEventListener('click',buildSuno);$('stylePrompt').addEventListener('input',()=>{updateCounters();autosaveSuno()});$('excludePrompt').addEventListener('input',()=>{updateCounters();autosaveSuno()});
   $('newSongFromVaultBtn').addEventListener('click',createNewSong);
-  $('buildVisualBtn').addEventListener('click',buildVisual);$('copyVisualBtn').addEventListener('click',()=>copyValue('visualBrief'));
-  $('buildReleaseBtn').addEventListener('click',buildRelease);$('copyReleaseBtn').addEventListener('click',()=>copyValue('releaseBoard'));
+  $('buildVisualBtn').addEventListener('click',buildVisual);$('copyVisualBtn').addEventListener('click',()=>copyValue('visualBrief'));$('visualBrief').addEventListener('input',autosaveVisual);
+  $('buildReleaseBtn').addEventListener('click',buildRelease);$('copyReleaseBtn').addEventListener('click',()=>copyValue('releaseBoard'));$('releaseBoard').addEventListener('input',autosaveRelease);
   $('brainSend').addEventListener('click',askBrain);$('brainInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();askBrain()}});$('nativeConnectBtn').addEventListener('click',connectNative);$('copyBrainContext').addEventListener('click',copyFullContext);$('openChatGPTBtn').addEventListener('click',openChatGPT);$('clearBrainBtn').addEventListener('click',()=>{state.brain.messages=[];save();renderBrainMessages()});
   $$('#brainModes button').forEach(b=>b.addEventListener('click',()=>{state.brain.mode=b.dataset.mode;save();renderBrainModes()}));
   $('exportBtn').addEventListener('click',exportState);$('importBtn').addEventListener('click',()=>$('importFile').click());$('importFile').addEventListener('change',()=>{const f=$('importFile').files?.[0];if(f)importState(f)});
