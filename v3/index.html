@@ -207,17 +207,65 @@
     </section>
 
     <section class="view" id="lyrics">
-      <div class="section-head"><div><p class="eyebrow">04 // WRITING ROOM</p><h1>Lyrics Lab</h1><p>Write for a mouth, not a mood board. Meter, anchor phrases and cliché pressure stay visible while you work.</p></div><button class="primary brain-action" data-brain-task="lyrics">ASK LYRIC WRITER</button></div>
-      <div class="two-col wide-left">
+      <div class="section-head"><div><p class="eyebrow">04 // WRITING ROOM</p><h1>Lyrics Lab</h1><p>The darkness comes from the idea, not the vocabulary. Start with a human observation, find the contradiction, then make it sing.</p></div><button class="primary brain-action" data-brain-task="lyrics">OPEN LYRIC BRAIN</button></div>
+
+      <article class="panel lyric-thought-engine">
+        <div class="panel-head"><div><span class="panel-title">THOUGHT ENGINE</span><h2>What are you actually saying?</h2></div><button class="secondary" id="saveLyricDNA">SAVE THOUGHT</button></div>
+        <div class="form-grid two">
+          <label>Plain-English thesis<textarea id="lyricPlain" placeholder="People spend so much time preparing to live that they forget to actually live."></textarea></label>
+          <label>Human observation<textarea id="lyricObservation" placeholder="Someone checking their phone during a sunset. A man apologizing to an automated phone system."></textarea></label>
+          <label>Contradiction / absurdity<textarea id="lyricContradiction" placeholder="We invented instant communication and stopped answering the phone."></textarea></label>
+          <label>Physical anchor<textarea id="lyricObject" placeholder="A grocery-store fluorescent light, an elevator button, shoes beside a hospital bed..."></textarea></label>
+        </div>
+        <div class="form-grid two">
+          <label>Primary lens<select id="lyricLens"><option>Observer</option><option>Cosmonaut</option><option>Cynic</option><option>Wounded Man</option><option>Seducer</option><option>The Void</option></select></label>
+          <label>Secondary lens<select id="lyricLens2"><option>Cosmonaut</option><option>Observer</option><option>Cynic</option><option>Wounded Man</option><option>Seducer</option><option>The Void</option></select></label>
+        </div>
+        <div class="lyric-constitution">
+          <strong>MR DARKNESS RULE:</strong> observe before declaring · question more than explain · concrete before abstract · dry wit before melodrama · compassion underneath the cynicism · never try to sound profound
+        </div>
+        <div class="editor-tools lyric-tool-row">
+          <button class="secondary lyric-ai-tool" data-lyric-tool="concepts">CONCEPT FORGE</button>
+          <button class="ghost lyric-ai-tool" data-lyric-tool="plain">WHAT AM I ACTUALLY SAYING?</button>
+          <button class="ghost lyric-ai-tool" data-lyric-tool="human">MAKE MORE HUMAN</button>
+          <button class="ghost lyric-ai-tool" data-lyric-tool="less_poetic">MAKE LESS POETIC</button>
+          <button class="ghost lyric-ai-tool" data-lyric-tool="drier">MAKE IT DRIER</button>
+          <button class="ghost lyric-ai-tool" data-lyric-tool="stranger">MAKE IT STRANGER</button>
+          <button class="ghost lyric-ai-tool" data-lyric-tool="cosmic">COSMIC ZOOM</button>
+          <button class="ghost lyric-ai-tool" data-lyric-tool="earth">BACK TO EARTH</button>
+          <button class="ghost lyric-ai-tool" data-lyric-tool="darkness">MR DARKNESS IT</button>
+        </div>
+      </article>
+
+      <div class="two-col wide-left lyrics-workbench">
         <article class="panel editor-panel">
           <div class="panel-head"><div><span class="panel-title">DRAFT</span><h2 id="lyricsSongName">Active song</h2></div><button class="secondary" id="saveLyricsBtn">SAVE</button></div>
           <textarea id="lyricsDraft" class="lyrics-editor" placeholder="Write or paste lyrics here..."></textarea>
-          <div class="editor-tools"><button class="ghost" id="meterBtn">CHECK METER</button><button class="ghost" id="clicheBtn">SCAN CLICHÉS</button><button class="ghost" id="selectionPhraseBtn">SAVE SELECTED PHRASE</button></div>
+          <div class="editor-tools">
+            <button class="ghost" id="meterBtn">CHECK METER</button>
+            <button class="ghost" id="clicheBtn">AI PRESSURE SCAN</button>
+            <button class="ghost" id="humanBtn">HUMAN TEST</button>
+            <button class="ghost" id="selectionPhraseBtn">SAVE SELECTED PHRASE</button>
+          </div>
         </article>
+
         <div class="stack">
-          <article class="panel"><span class="panel-title">METER</span><div id="meterResults" class="line-analysis empty-state">Run the meter checker to see approximate syllable counts line by line.</div></article>
-          <article class="panel redline"><span class="panel-title">CLICHÉ PRESSURE</span><div id="clicheResults" class="line-analysis empty-state">Scan the draft for clusters of stock goth / AI language.</div></article>
-          <article class="panel"><div class="panel-head"><div><span class="panel-title">PHRASE BANK</span><h2>Keep the good fragments</h2></div><button class="ghost" id="addPhraseBtn">+ ADD</button></div><div id="phraseBank" class="phrase-bank"></div></article>
+          <article class="panel">
+            <span class="panel-title">HUMAN TEST</span>
+            <div id="humanResults" class="line-analysis empty-state">Check whether the lyric contains concrete objects, recognizable behavior, contradiction, conversational language, surprise and restraint.</div>
+          </article>
+          <article class="panel">
+            <span class="panel-title">METER</span>
+            <div id="meterResults" class="line-analysis empty-state">Run the meter checker to see approximate syllable counts line by line.</div>
+          </article>
+          <article class="panel redline">
+            <span class="panel-title">AI PRESSURE</span>
+            <div id="clicheResults" class="line-analysis empty-state">Scan for stock goth language, poetic symmetry, abstractness, emotional inflation and other AI-writing tells.</div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><div><span class="panel-title">PHRASE BANK</span><h2>Keep the good fragments</h2></div><button class="ghost" id="addPhraseBtn">+ ADD</button></div>
+            <div id="phraseBank" class="phrase-bank"></div>
+          </article>
         </div>
       </div>
     </section>
