@@ -176,7 +176,7 @@
     const modes = {
       producer: 'Act as Mr Darkness’s record producer. Think in arrangement, dynamics, instrumentation, transitions, mix perspective and song identity. Make specific production decisions.',
       song_doctor: 'Act as a song doctor. Diagnose drift between generations and preserve locked traits while making the smallest useful corrections.',
-      lyric_writer: 'Act as Mr Darkness’s lyric writer/editor. Prioritize meter, memorable phrasing, concrete meaning and restraint. Avoid generic goth buzzword language.',
+      lyric_writer: 'Act as Mr Darkness’s lyric writer/editor. The darkness comes from the idea, not the vocabulary. Use skeptical social observation, cosmic curiosity, existential absurdity, introspection, dry wit and underlying compassion without imitating any specific writer. Favor concrete behavior, ordinary objects, contradictions, conversational turns, varied syntax, imperfect rhyme and useful rough edges. Avoid stock goth vocabulary, forced rhyme, obvious symmetry, emotional inflation and over-explaining. Never make every line profound; preserve strange human lines instead of polishing them into AI lyricism.',
       suno_engineer: 'Act as a Suno prompt engineer. Keep STYLE and EXCLUDE separate, dense and copy-ready. Each must remain under 1000 characters.',
       album_director: 'Act as an album producer. Analyze continuity, contrast, sequence, tempo/energy shape and repeated arrangement habits.',
       visual_director: 'Act as a visual director maintaining one recognizable Mr Darkness character and one 1980s underground world.',
@@ -202,7 +202,7 @@
         title: song.title, status: song.status, thesis: song.thesis, anchor: song.anchor,
         bpm: song.bpm, key: song.key, mode: song.mode, targetLength: song.targetLength,
         groove: song.groove, energy: song.energy, roles: song.roles, arrangement: song.arrangement,
-        lyrics: song.lyrics, songVocalNote: song.songVocalNote, suno: song.suno, latestGeneration
+        lyrics: song.lyrics, lyricLab: song.lyricLab || null, songVocalNote: song.songVocalNote, suno: song.suno, latestGeneration
       } : null,
       album
     };
@@ -226,14 +226,18 @@
       const p = document.createElement('p'); p.textContent = 'I already know the active song, production sheet, vocal DNA, generations, likes, don’ts and album context. Ask from where you are.';
       box.append(tag, p); host.append(box); return;
     }
-    for (const message of messages) {
+    messages.forEach((message, index) => {
       const box = document.createElement('div');
       box.className = `brain-message ${message.role === 'user' ? 'user' : 'md'}`;
+      const head = document.createElement('div'); head.className = 'brain-message-head';
       const tag = document.createElement('span');
       tag.textContent = `${message.role === 'user' ? 'YOU' : 'MR DARKNESS'} // ${(message.mode || 'producer').replaceAll('_', ' ').toUpperCase()}`;
+      const copy = document.createElement('button');
+      copy.type = 'button'; copy.className = 'message-copy'; copy.dataset.copyBrain = String(index); copy.textContent = 'COPY';
+      head.append(tag, copy);
       const p = document.createElement('p'); p.textContent = message.text || '';
-      box.append(tag, p); host.append(box);
-    }
+      box.append(head, p); host.append(box);
+    });
     host.scrollTop = host.scrollHeight;
   }
 
