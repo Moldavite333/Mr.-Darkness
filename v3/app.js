@@ -262,15 +262,167 @@
   function estimateBpm(samples,sampleRate){if(!samples.length||!sampleRate)return null;const frame=Math.max(1,Math.floor(sampleRate*.05));const env=[];for(let i=0;i<samples.length;i+=frame){let s=0;const end=Math.min(samples.length,i+frame);for(let j=i;j<end;j++)s+=Math.abs(samples[j]);env.push(s/(end-i))}const mean=env.reduce((a,b)=>a+b,0)/Math.max(1,env.length);for(let i=0;i<env.length;i++)env[i]-=mean;const fps=sampleRate/frame;let best=-Infinity,bestBpm=null;for(let bpm=60;bpm<=180;bpm++){const lag=Math.round(fps*60/bpm);let corr=0;for(let i=lag;i<env.length;i++)corr+=env[i]*env[i-lag];if(corr>best){best=corr;bestBpm=bpm}}return bestBpm}
   function renderAudioMetrics(a){$('audioAnalysis').innerHTML=[['DURATION',`${a.duration}s`],['BPM',a.bpm||'—'],['RMS',`${a.rmsDb} dBFS`],['PEAK',`${a.peakDb} dBFS`],['CREST',`${a.crestDb} dB`],['ENERGY',a.energyShape]].map(([k,v])=>`<div class="metric"><span>${k}</span><strong>${escapeHtml(v)}</strong></div>`).join('')}
 
-  function renderLyrics(){const s=activeSong();$('lyricsSongName').textContent=s.title;$('lyricsDraft').value=s.lyrics||'';renderPhraseBank();$('meterResults').innerHTML='<div class="empty-state">Run the meter checker to see approximate syllable counts line by line.</div>';$('clicheResults').innerHTML='<div class="empty-state">Scan the draft for clusters of stock goth / AI language.</div>'}
-  function saveLyrics(){const s=activeSong();s.lyrics=$('lyricsDraft').value;s.updatedAt=Date.now();save('LYRICS SAVED');toast('Lyrics saved to active song.')}
-  function syllables(word){word=word.toLowerCase().replace(/[^a-z]/g,'');if(!word)return 0;if(word.length<=3)return 1;word=word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/,'').replace(/^y/,'');const m=word.match(/[aeiouy]{1,2}/g);return Math.max(1,m?m.length:1)}
+  function lyricLabState(s=activeSong()){
+    if(!s.lyricLab)s.lyricLab={plain:'',observation:'',contradiction:'',object:'',lens:'Observer',lens2:'Cosmonaut'};
+    return s.lyricLab;
+  }
+  function syncLyricThoughtFromDom(){
+    const s=activeSong(),lab=lyricLabState(s);
+    lab.plain=clean($('lyricPlain').value);
+    lab.observation=clean($('lyricObservation').value);
+    lab.contradiction=clean($('lyricContradiction').value);
+    lab.object=clean($('lyricObject').value);
+    lab.lens=$('lyricLens').value;
+    lab.lens2=$('lyricLens2').value;
+    s.lyrics=$('lyricsDraft').value;
+    s.updatedAt=Date.now();
+    return lab;
+  }
+  function renderLyrics(){
+    const s=activeSong(),lab=lyricLabState(s);
+    $('lyricsSongName').textContent=s.title;
+    $('lyricsDraft').value=s.lyrics||'';
+    $('lyricPlain').value=lab.plain||s.thesis||'';
+    $('lyricObservation').value=lab.observation||'';
+    $('lyricContradiction').value=lab.contradiction||'';
+    $('lyricObject').value=lab.object||'';
+    $('lyricLens').value=lab.lens||'Observer';
+    $('lyricLens2').value=lab.lens2||'Cosmonaut';
+    renderPhraseBank();
+    $('meterResults').innerHTML='<div class="empty-state">Run the meter checker to see approximate syllable counts line by line.</div>';
+    $('clicheResults').innerHTML='<div class="empty-state">Scan for stock goth language, poetic symmetry, abstractness, emotional inflation and other AI-writing tells.</div>';
+    $('humanResults').innerHTML='<div class="empty-state">Check whether the lyric contains concrete objects, recognizable behavior, contradiction, conversational language, surprise and restraint.</div>';
+  }
+  function saveLyricThought(){
+    syncLyricThoughtFromDom();
+    save('LYRIC THOUGHT SAVED');
+    toast('Thought engine saved to the active song.');
+  }
+  function saveLyrics(){
+    const s=activeSong();
+    syncLyricThoughtFromDom();
+    s.updatedAt=Date.now();
+    save('LYRICS SAVED');
+    toast('Lyrics and thought engine saved to active song.');
+  }
+  function syllables(word){
+    word=word.toLowerCase().replace(/[^a-z]/g,'');
+    if(!word)return 0;
+    if(word.length<=3)return 1;
+    word=word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/,'').replace(/^y/,'');
+    const m=word.match(/[aeiouy]{1,2}/g);
+    return Math.max(1,m?m.length:1);
+  }
   function lineSyllables(line){return line.split(/\s+/).filter(Boolean).reduce((n,w)=>n+syllables(w),0)}
-  function checkMeter(){const lines=$('lyricsDraft').value.split('\n');const counts=lines.map(l=>clean(l)?lineSyllables(l):0).filter(Boolean).sort((a,b)=>a-b);const median=counts.length?counts[Math.floor(counts.length/2)]:0;$('meterResults').innerHTML=lines.map((line,i)=>{if(!clean(line))return '<div class="meter-line"><b>—</b><span></span></div>';const n=lineSyllables(line);const bad=median&&Math.abs(n-median)>=4;return `<div class="meter-line ${bad?'bad':''}"><b>${n}</b><span>${escapeHtml(line)}</span></div>`}).join('')||'<div class="empty-state">No lyrics yet.</div>'}
-  function scanCliches(){const lines=$('lyricsDraft').value.split('\n');let total=0;$('clicheResults').innerHTML=lines.map(line=>{let html=escapeHtml(line);let hits=[];for(const c of CLICHES){const re=new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`,'ig');if(re.test(line)){hits.push(c);html=html.replace(re,m=>`<span class="cliche-hit">${m}</span>`)}}total+=hits.length;return hits.length?`<div class="cliche-line"><b>${hits.length}</b><span>${html}</span></div>`:''}).filter(Boolean).join('')||'<div class="empty-state">No obvious stock-goth clusters found. That does not guarantee the lyric is good, but at least the buzzword alarm is quiet.</div>';if(total>=5)toast('High cliché pressure detected.');else if(total)toast(`${total} cliché-pressure hit${total===1?'':'s'} found.`);else toast('Cliché scan is clean.')}
-  function renderPhraseBank(){const s=activeSong();$('phraseBank').innerHTML=(s.phraseBank||[]).length?s.phraseBank.map((p,i)=>`<span class="phrase">${escapeHtml(p)}<button data-remove-phrase="${i}">×</button></span>`).join(''):'<span class="muted">No saved phrases yet.</span>'}
-  function addPhrase(text){const p=clean(text||prompt('Phrase to save:'));if(!p)return;const s=activeSong();if(!s.phraseBank)s.phraseBank=[];if(!s.phraseBank.includes(p))s.phraseBank.unshift(p);save('PHRASE SAVED');renderPhraseBank();renderControl()}
-  function addSelectedPhrase(){const el=$('lyricsDraft');const text=el.value.slice(el.selectionStart,el.selectionEnd);if(!clean(text)){toast('Select a lyric phrase first.');return}addPhrase(text)}
+  function checkMeter(){
+    const lines=$('lyricsDraft').value.split('\n');
+    const counts=lines.map(l=>clean(l)?lineSyllables(l):0).filter(Boolean).sort((a,b)=>a-b);
+    const median=counts.length?counts[Math.floor(counts.length/2)]:0;
+    $('meterResults').innerHTML=lines.map(line=>{
+      if(!clean(line))return '<div class="meter-line"><b>—</b><span></span></div>';
+      const n=lineSyllables(line),bad=median&&Math.abs(n-median)>=4;
+      return '<div class="meter-line '+(bad?'bad':'')+'"><b>'+n+'</b><span>'+escapeHtml(line)+'</span></div>';
+    }).join('')||'<div class="empty-state">No lyrics yet.</div>';
+  }
+  function tokenWords(text){return text.toLowerCase().match(/[a-z']+/g)||[]}
+  function escapeRegExp(text){return text.replace(/[.*+?^$()|[\]\\]/g,'\\$&')}
+  function scanCliches(){
+    const text=$('lyricsDraft').value,lines=text.split('\n').filter(l=>clean(l));
+    let stock=0;
+    const marked=lines.map(line=>{
+      let html=escapeHtml(line),hits=[];
+      for(const phrase of CLICHES){
+        const re=new RegExp('\\b'+escapeRegExp(phrase)+'\\b','ig');
+        if(re.test(line)){
+          hits.push(phrase);
+          html=html.replace(re,m=>'<span class="cliche-hit">'+m+'</span>');
+        }
+      }
+      stock+=hits.length;
+      return hits.length?'<div class="cliche-line"><b>'+hits.length+'</b><span>'+html+'</span></div>':'';
+    }).filter(Boolean);
+    const words=tokenWords(text);
+    const abstract=words.filter(w=>ABSTRACT_WORDS.includes(w)).length;
+    const inflation=words.filter(w=>INFLATION_WORDS.includes(w)).length;
+    const starters={};
+    lines.forEach(l=>{const key=tokenWords(l).slice(0,2).join(' ');if(key)starters[key]=(starters[key]||0)+1});
+    const symmetry=Object.values(starters).filter(n=>n>=3).reduce((a,b)=>a+b,0);
+    const lengths=lines.map(l=>tokenWords(l).length).filter(Boolean);
+    const spread=lengths.length?Math.max(...lengths)-Math.min(...lengths):0;
+    const pressure=stock*2+abstract+inflation*2+symmetry+(lines.length>=6&&spread<=2?4:0);
+    const level=pressure>=16?'HIGH':pressure>=7?'MEDIUM':'LOW';
+    const summary='<div class="pressure-summary '+level.toLowerCase()+'"><b>'+level+' AI PRESSURE</b><span>stock '+stock+' · abstract '+abstract+' · inflation '+inflation+' · symmetry '+symmetry+'</span></div>';
+    $('clicheResults').innerHTML=summary+(marked.join('')||'<div class="empty-state">No stock-goth phrase hits. The structural pressure score above matters more than vocabulary alone.</div>');
+    toast(level+' AI-writing pressure.');
+  }
+  function humanTest(){
+    const text=$('lyricsDraft').value,lab=syncLyricThoughtFromDom(),words=tokenWords(text),lines=text.split('\n').filter(l=>clean(l));
+    const hasObject=!!lab.object||words.some(w=>HUMAN_OBJECT_WORDS.includes(w));
+    const hasBehavior=!!lab.observation||/\b(wait|waiting|walk|walking|sit|sitting|look|looking|check|checking|drive|driving|call|calling|answer|sleep|wake|work|working|eat|drink|watch|scroll|scrolling|leave|left|stand|standing|hold|holding)\b/i.test(text);
+    const hasContradiction=!!lab.contradiction||/\b(but|yet|although|instead|still|except|while)\b/i.test(text);
+    const conversational=/\b(i'm|i've|i'd|can't|don't|won't|we're|we've|isn't|aren't|that's|there's|you've|you'd)\b/i.test(text)||lines.some(l=>tokenWords(l).length>0&&tokenWords(l).length<=7);
+    const hasQuestion=/\?/.test(text)||/\b(why|how|who|what if|apparently|suppose)\b/i.test(text);
+    const inflation=words.filter(w=>INFLATION_WORDS.includes(w)).length;
+    const restrained=inflation<=2;
+    const tests=[
+      ['PHYSICAL DETAIL',hasObject,'Give the thought a thing you could point at.'],
+      ['HUMAN BEHAVIOR',hasBehavior,'Show somebody doing something ordinary.'],
+      ['CONTRADICTION',hasContradiction,'Find the part of the idea that does not add up.'],
+      ['SPOKEN LANGUAGE',conversational,'Let at least one line sound like a person could actually say it.'],
+      ['QUESTION / TURN',hasQuestion,'Let the lyric wonder, pivot or undermine itself.'],
+      ['RESTRAINT',restrained,'Reduce emotional superlatives; let the image carry the damage.']
+    ];
+    const score=tests.filter(x=>x[1]).length;
+    $('humanResults').innerHTML='<div class="human-score"><strong>'+score+'/6</strong><span>human texture</span></div>'+tests.map(([name,ok,tip])=>'<div class="human-check '+(ok?'pass':'fail')+'"><b>'+(ok?'✓':'○')+' '+name+'</b><span>'+(ok?'Present':escapeHtml(tip))+'</span></div>').join('');
+    toast('Human texture: '+score+'/6.');
+  }
+  const LYRIC_TOOL_PROMPTS={
+    concepts:'Do not write lyrics yet. Generate 6 genuinely different conceptual directions for this song. Each direction must begin with a concrete human observation, identify the contradiction, show the darker implication, include one dry or absurd angle, and optionally zoom out to consciousness/time/mortality. Avoid goth vocabulary. End by recommending the 2 richest directions for an actual song.',
+    plain:'Translate the current draft into blunt plain English. For each section, tell me what the speaker is actually saying without poetry. Identify any line that sounds meaningful but has no clear underlying thought. Then give one concise song thesis. Do not rewrite the lyric yet.',
+    human:'Revise only the lines that feel synthetic. Preserve the strongest odd phrases and useful rough edges. Add concrete behavior, mundane objects, contractions, asymmetry and lived-in detail. Vary sentence lengths and line shapes. Do not polish everything. Do not introduce a rhyme merely because it is available.',
+    less_poetic:'Make the current lyric less performatively poetic and more conversational without making it dull. Replace adjective stacks and abstract declarations with verbs, objects, behavior and blunt statements. Keep the best images. Leave some lines almost embarrassingly plain.',
+    drier:'Reduce melodrama. Introduce restrained understatement and dry observational wit where the subject permits it. The joke must reveal something sad, absurd or human; never turn the song into comedy.',
+    stranger:'Make the underlying ideas stranger, not the vocabulary. Find an unexpected logical implication, social ritual, perceptual problem or consciousness question inside the existing subject. Do not add random surreal imagery.',
+    cosmic:'Take the most mundane physical detail in the current song and zoom outward: individual → society → species → consciousness/time/cosmos. Keep one foot in the original room or object so the result does not become abstract space poetry.',
+    earth:'Bring the current lyric back to Earth. Replace at least two abstract/cosmic statements with a room, object, gesture, social interaction or bodily action. Preserve the philosophical implication but stop explaining it.',
+    darkness:'Rewrite with the Mr Darkness constitution: jaded, cosmic, introspective, skeptical, compassionate underneath, with dry wit and 1980s underground emotional restraint. Do not add generic goth imagery. The darkness must come from the thought. Preserve any line that already feels singular.'
+  };
+  function lyricTool(task){
+    syncLyricThoughtFromDom();
+    save('LYRIC CONTEXT SAVED');
+    state.brain.mode='lyric_writer';
+    renderBrainModes();
+    const lab=lyricLabState();
+    const frame=[
+      LYRIC_TOOL_PROMPTS[task]||LYRIC_TOOL_PROMPTS.human,
+      'Primary lens: '+lab.lens+'. Secondary lens: '+lab.lens2+'.',
+      lab.plain&&'Plain thesis: '+lab.plain,
+      lab.observation&&'Observation: '+lab.observation,
+      lab.contradiction&&'Contradiction: '+lab.contradiction,
+      lab.object&&'Physical anchor: '+lab.object
+    ].filter(Boolean).join('\n\n');
+    $('brainInput').value=frame;
+    openBrain();
+  }
+  function renderPhraseBank(){
+    const s=activeSong();
+    $('phraseBank').innerHTML=(s.phraseBank||[]).length?s.phraseBank.map((p,i)=>'<span class="phrase">'+escapeHtml(p)+'<button data-remove-phrase="'+i+'">×</button></span>').join(''):'<span class="muted">No saved phrases yet.</span>';
+  }
+  function addPhrase(text){
+    const p=clean(text||prompt('Phrase to save:'));
+    if(!p)return;
+    const s=activeSong();
+    if(!s.phraseBank)s.phraseBank=[];
+    if(!s.phraseBank.includes(p))s.phraseBank.unshift(p);
+    save('PHRASE SAVED');
+    renderPhraseBank();
+    renderControl();
+  }
+  function addSelectedPhrase(){
+    const el=$('lyricsDraft'),text=el.value.slice(el.selectionStart,el.selectionEnd);
+    if(!clean(text)){toast('Select a lyric phrase first.');return}
+    addPhrase(text);
+  }
 
   function hydrateVocal(){const v=state.vocal;$('vRegister').value=v.register;$('vPlacement').value=v.placement;$('vMovement').value=v.movement;$('vDelivery').value=v.delivery;$('vDiction').value=v.diction;$('vHarmony').value=v.harmony;$('vChorus').value=v.chorus;$('vEmotion').value=v.emotion;$('vForbidden').value=v.forbidden;$('vocalSongTitle').textContent=activeSong().title;$('songVocalNote').value=activeSong().songVocalNote||''}
   function saveVocal(){state.vocal={register:clean($('vRegister').value),placement:clean($('vPlacement').value),movement:clean($('vMovement').value),delivery:clean($('vDelivery').value),diction:clean($('vDiction').value),harmony:clean($('vHarmony').value),chorus:clean($('vChorus').value),emotion:clean($('vEmotion').value),forbidden:clean($('vForbidden').value)};save('VOCAL DNA SAVED');toast('Vocal DNA updated globally.')}
