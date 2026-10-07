@@ -380,6 +380,58 @@
     s.updatedAt=Date.now();
     return lab;
   }
+  function normalizeSunoSection(raw){
+    const value=String(raw||'').replace(/\*\*/g,'').replace(/__/g,'').replace(/`/g,'').trim().replace(/^[\[\(\{]\s*|\s*[\]\)\}]$/g,'').trim();
+    if(!value)return null;
+    const lower=value.toLowerCase();
+    const number=(value.match(/\b(\d+)\b/)||[])[1]||'';
+    const sectionRules=[['pre-chorus','Pre-Chorus'],['post-chorus','Post-Chorus'],['pre chorus','Pre-Chorus'],['post chorus','Post-Chorus'],['verse','Verse'],['chorus','Chorus'],['bridge','Bridge'],['refrain','Refrain'],['outro','Outro'],['interlude','Interlude'],['breakdown','Breakdown'],['hook','Hook']];
+    if(/\bintro\b/.test(lower)&&/\binstrumental\b/.test(lower))return '[Instrumental Intro]';
+    if(/\boutro\b/.test(lower)&&/\binstrumental\b/.test(lower))return '[Instrumental Outro]';
+    if(/\binstrumental\b/.test(lower))return number?'[Instrumental '+number+']':'[Instrumental]';
+    for(const [needle,label] of sectionRules){if(lower.includes(needle))return number?'['+label+' '+number+']':'['+label+']'}
+    if(/^intro\b/i.test(value))return '[Intro]';
+    return null;
+  }
+
+  function buildSunoLyricsExport(source=$('lyricsDraft')?.value||''){
+    let removed=0,normalized=0;
+    const out=[];
+    const lines=String(source||'').replace(/\r\n?/g,'\n').split('\n');
+    for(const original of lines){
+      let line=original.replace(/\*\*/g,'').replace(/__/g,'').replace(/`/g,'').trimEnd();
+      const trimmed=line.trim();
+      if(!trimmed){if(out.length&&out[out.length-1]!=='')out.push('');continue}
+      const bracketOnly=/^[\[\(\{].*[\]\)\}]$/.test(trimmed);
+      if(bracketOnly){
+        const tag=normalizeSunoSection(trimmed);
+        if(tag){if(tag!==trimmed)normalized++;out.push(tag)}else{removed++}
+        continue;
+      }
+      const withoutLeadingTime=line.replace(/^\s*(?:\d{1,2}:)?\d{1,2}:\d{2}\s*[-–—:|]\s*/,'');
+      if(withoutLeadingTime!==line){line=withoutLeadingTime;removed++}
+      const withoutTrailingTime=line.replace(/\s*[-–—,;|]\s*(?:\d{1,2}:)?\d{1,2}:\d{2}\s*$/,'').replace(/\s*\((?:\d{1,2}:)?\d{1,2}:\d{2}\)\s*$/,'');
+      if(withoutTrailingTime!==line){line=withoutTrailingTime;removed++}
+      if(line.trim())out.push(line.trimEnd());
+    }
+    while(out.length&&out[out.length-1]==='')out.pop();
+    const text=out.join('\n').replace(/\n{3,}/g,'\n\n');
+    return {text,removed,normalized};
+  }
+
+  function updateSunoLyricsExport(){
+    const target=$('sunoLyricsExport'),status=$('sunoLyricsStatus');
+    if(!target||!status)return;
+    const result=buildSunoLyricsExport($('lyricsDraft')?.value||'');
+    target.value=result.text;
+    const changes=result.removed+result.normalized;
+    status.textContent=changes?'Cleaned '+changes+' item'+(changes===1?'':'s')+' · '+result.removed+' removed · '+result.normalized+' section tag'+(result.normalized===1?'':'s')+' normalized':'Already Suno-clean — no notes or formatting needed removal.';
+  }
+
+  async function copySunoLyrics(){
+    updateSunoLyricsExport();
+    try{await copyText($('sunoLyricsExport').value);toast('Suno-ready lyrics copied.')}catch(err){toast(err?.message||'Copy failed.')}
+  }
   function renderLyrics(){
     const s=activeSong(),lab=lyricLabState(s);
     $('lyricsSongName').textContent=s.title;
@@ -394,6 +446,7 @@
     $('meterResults').innerHTML='<div class="empty-state">Run the meter checker to see approximate syllable counts line by line.</div>';
     $('clicheResults').innerHTML='<div class="empty-state">Scan for stock goth language, poetic symmetry, abstractness, emotional inflation and other AI-writing tells.</div>';
     $('humanResults').innerHTML='<div class="empty-state">Check whether the lyric contains concrete objects, recognizable behavior, contradiction, conversational language, surprise and restraint.</div>';
+    updateSunoLyricsExport();
   }
   function saveLyricThought(){
     syncLyricThoughtFromDom();
@@ -652,7 +705,7 @@
   $('build').addEventListener('input',e=>{if(e.target.matches('input,textarea,select'))autosaveBuild()});$('arrangementEditor').addEventListener('input',autosaveBuild);
   $('newGenerationBtn').addEventListener('click',newGeneration);$('saveGenerationBtn').addEventListener('click',saveGeneration);$('repairBtn').addEventListener('click',buildRepair);$('copyRepairBtn').addEventListener('click',()=>copyValue('repairBrief'));$('compareBtn').addEventListener('click',compareGenerations);$('combineBtn').addEventListener('click',combineBest);$('analyzeAudioBtn').addEventListener('click',analyzeAudio);
   $$('.score-grid input[type="range"]').forEach(x=>x.addEventListener('input',()=>x.nextElementSibling.textContent=x.value));
-  $('saveLyricsBtn').addEventListener('click',saveLyrics);$('saveLyricDNA').addEventListener('click',saveLyricThought);$('meterBtn').addEventListener('click',checkMeter);$('clicheBtn').addEventListener('click',scanCliches);$('humanBtn').addEventListener('click',humanTest);$('copyLyricsBtn').addEventListener('click',()=>copyValue('lyricsDraft'));$('selectLyricsBtn').addEventListener('click',()=>selectField('lyricsDraft'));$('selectionPhraseBtn').addEventListener('click',addSelectedPhrase);$('addPhraseBtn').addEventListener('click',()=>addPhrase());$('lyrics').addEventListener('input',e=>{if(e.target.matches('input,textarea,select'))autosaveLyrics()});
+  $('saveLyricsBtn').addEventListener('click',saveLyrics);$('saveLyricDNA').addEventListener('click',saveLyricThought);$('meterBtn').addEventListener('click',checkMeter);$('clicheBtn').addEventListener('click',scanCliches);$('humanBtn').addEventListener('click',humanTest);$('copyLyricsBtn').addEventListener('click',()=>copyValue('lyricsDraft'));$('selectLyricsBtn').addEventListener('click',()=>selectField('lyricsDraft'));$('copySunoLyricsBtn').addEventListener('click',copySunoLyrics);$('selectionPhraseBtn').addEventListener('click',addSelectedPhrase);$('addPhraseBtn').addEventListener('click',()=>addPhrase());$('lyrics').addEventListener('input',e=>{if(e.target.matches('input,textarea,select')){autosaveLyrics();if(e.target.id==='lyricsDraft')updateSunoLyricsExport()}});
   $('saveVocalBtn').addEventListener('click',saveVocal);$('saveSongVocalBtn').addEventListener('click',()=>{activeSong().songVocalNote=clean($('songVocalNote').value);save('SONG VOCAL NOTE SAVED');toast('Song-specific vocal direction saved.')});
   $('buildSunoBtn').addEventListener('click',buildSuno);$('stylePrompt').addEventListener('input',()=>{updateCounters();autosaveSuno()});$('excludePrompt').addEventListener('input',()=>{updateCounters();autosaveSuno()});
   $('newSongFromVaultBtn').addEventListener('click',createNewSong);
