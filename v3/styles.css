@@ -72,3 +72,14 @@ textarea::selection,input::selection{background:rgba(208,70,91,.45);color:#fff}
   .message-copy{padding:6px 8px}
   textarea,input{font-size:14px}
 }
+
+.suno-lyrics-export{margin-top:12px;border-color:#3f2a30}
+.suno-lyrics-export .panel-head{align-items:center}
+.suno-lyrics-export .muted{margin:0 0 12px;font-size:10px}
+.suno-lyrics-box{min-height:280px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.65;background:#080607}
+.export-status{margin-top:8px;color:var(--faint);font-size:9px;letter-spacing:.04em}
+@media(max-width:760px){
+  .suno-lyrics-export .panel-head{align-items:stretch;flex-direction:column}
+  .suno-lyrics-export .panel-head .primary{width:100%}
+  .suno-lyrics-box{min-height:340px}
+}
