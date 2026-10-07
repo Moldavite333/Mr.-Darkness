@@ -83,3 +83,31 @@ textarea::selection,input::selection{background:rgba(208,70,91,.45);color:#fff}
   .suno-lyrics-export .panel-head .primary{width:100%}
   .suno-lyrics-box{min-height:340px}
 }
+
+
+/* V3.3 Brain copy workflow: buttons instead of fighting Android text selection */
+.message-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+.brain-actions [hidden]{display:none!important}
+.native-brain-action,.browser-brain-action{min-width:0}
+@media (pointer:coarse), (max-width:760px){
+  .brain-message,
+  .brain-message p,
+  .brain-message-head,
+  .brain-message-head span,
+  .message-actions,
+  .brain-actions,
+  .mode-strip,
+  .brain-status-card{
+    -webkit-user-select:none!important;
+    user-select:none!important;
+    -webkit-touch-callout:none!important;
+  }
+  .brain-composer textarea{
+    -webkit-user-select:text!important;
+    user-select:text!important;
+    -webkit-touch-callout:default!important;
+  }
+  .brain-message-head{align-items:flex-start;flex-direction:column}
+  .message-actions{justify-content:flex-start;width:100%}
+  .message-copy{padding:7px 9px}
+}
