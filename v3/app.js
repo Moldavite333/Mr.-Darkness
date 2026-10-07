@@ -660,7 +660,15 @@
     const s=activeSong();
     s.lyrics=lyrics;s.updatedAt=Date.now();save('LYRICS IMPORTED FROM BRAIN');renderLyrics();closeBrain();navigate('lyrics');toast('Lyrics sent to Lyrics Lab.');
   }
-  function renderBrainMessages(){const msgs=state.brain.messages||[];$('brainMessages').innerHTML=msgs.length?msgs.map((m,i)=>`<div class="brain-message ${m.role==='user'?'user':'md'}"><div class="brain-message-head"><span>${m.role==='user'?'YOU':'MR DARKNESS'} // ${escapeHtml((m.mode||'producer').replaceAll('_',' ').toUpperCase())}</span><button class="message-copy" data-copy-brain="${i}" type="button">COPY</button></div><p>${escapeHtml(m.text)}</p></div>`).join(''):'<div class="brain-message md"><div class="brain-message-head"><span>MR DARKNESS</span></div><p>I already know the active song, production sheet, vocal DNA, generations, likes, don’ts and album context. Ask from where you are.</p></div>';$('brainMessages').scrollTop=$('brainMessages').scrollHeight}
+  function renderBrainMessages(){
+    const msgs=state.brain.messages||[];
+    $('brainMessages').innerHTML=msgs.length?msgs.map((m,i)=>{
+      const assistant=m.role!=='user';
+      const lyricButtons=assistant?'<button class="message-copy" data-copy-brain-lyrics="'+i+'" type="button">COPY LYRICS</button><button class="message-copy" data-send-brain-lyrics="'+i+'" type="button">TO LYRICS</button>':'';
+      return '<div class="brain-message '+(m.role==='user'?'user':'md')+'"><div class="brain-message-head"><span>'+(m.role==='user'?'YOU':'MR DARKNESS')+' // '+escapeHtml((m.mode||'producer').replaceAll('_',' ').toUpperCase())+'</span><div class="message-actions">'+lyricButtons+'<button class="message-copy" data-copy-brain="'+i+'" type="button">COPY ANSWER</button></div></div><p>'+escapeHtml(displayBrainText(m.text))+'</p></div>';
+    }).join(''):'<div class="brain-message md"><div class="brain-message-head"><span>MR DARKNESS</span></div><p>I already know the active song, production sheet, vocal DNA, generations, likes, don’ts and album context. Ask from where you are.</p></div>';
+    $('brainMessages').scrollTop=$('brainMessages').scrollHeight;
+  }
   async function refreshNativeStatus(){
     const btn=$('nativeConnectBtn');
     try{
