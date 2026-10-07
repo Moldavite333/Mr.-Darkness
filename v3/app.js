@@ -608,7 +608,7 @@
   function buildRelease(){const s=activeSong();s.release={title:clean($('releaseTitle').value),type:$('releaseType').value,moment:clean($('releaseMoment').value),idea:clean($('releaseIdea').value)};const r=s.release;const out=[`RELEASE: ${r.title||s.title} · ${r.type}`,`CORE SIGNAL: ${r.idea||'Present Mr Darkness as a discovered recurring artist-character. Preserve mystery; do not explain the machinery.'}`,`TEASER MOMENT: ${r.moment||'Choose the strongest 10–15 second vocal or chorus identity moment.'}`,'','1 // SIGNAL','One strong image + a short audio fragment. Minimal copy. No biography dump.','', '2 // EVIDENCE','Second artifact from the same world: lyric fragment, alternate still, or short visual loop.','', '3 // IDENTITY','Reveal title/artwork and date. Keep copy short enough that the image and sound remain the event.','', '4 // TRANSMISSION',`Use ${r.moment||'the strongest chorus / vocal entry'} as the final pre-release teaser.`, '', '5 // RELEASE','Direct link, clean artwork, one sentence at most.','', '6 // AFTERIMAGE','Continue the world after release with an alternate scene, lyric artifact, generation fragment or short visual from the same song.'].join('\n');$('releaseBoard').value=out;s.releaseBoard=out;save('CAMPAIGN BUILT')}
 
   function brainInstructions(mode){
-    const lyric='Act as Mr Darkness’s lyric writer/editor. '+LYRIC_CONSTITUTION+' HUMAN FLOW: '+LYRIC_HUMAN_RULES+' Use an intellectual blend of skeptical social observation, cosmic curiosity, existential absurdity, introspection and dry wit without imitating any specific writer. Before drafting, privately check what is literally happening, what contradiction makes it interesting, what physical detail makes it human, and what larger philosophical implication is earned. Do not expose hidden reasoning. When generating options, prefer genuinely different conceptual angles over paraphrases. When revising, preserve singular phrases, imperfections and ambiguity; change only lines that are generic, over-explained, melodramatic or chosen merely to rhyme. Avoid stock goth/AI vocabulary and obvious symmetry. Never make every line profound. One plain human sentence can carry more weight than four metaphors. Write for a low baritone mouth: singable consonants, natural stresses, varied line length, no forced rhyme. OUTPUT RULE: whenever you provide actual lyrics, NEVER include timestamps, estimated durations, clock times, markdown headings, asterisks, production notes, vocal directions, arrangement commentary, or parenthetical performance instructions inside the lyric block. Use only plain Suno-safe section tags such as [Verse 1], [Pre-Chorus], [Chorus], [Bridge], [Instrumental], [Outro], followed by words intended to be sung. If discussing craft outside the lyric block, keep that commentary clearly separate.';
+    const lyric='Act as Mr Darkness’s lyric writer/editor. '+LYRIC_CONSTITUTION+' HUMAN FLOW: '+LYRIC_HUMAN_RULES+' Use an intellectual blend of skeptical social observation, cosmic curiosity, existential absurdity, introspection and dry wit without imitating any specific writer. Before drafting, privately check what is literally happening, what contradiction makes it interesting, what physical detail makes it human, and what larger philosophical implication is earned. Do not expose hidden reasoning. When generating options, prefer genuinely different conceptual angles over paraphrases. When revising, preserve singular phrases, imperfections and ambiguity; change only lines that are generic, over-explained, melodramatic or chosen merely to rhyme. Avoid stock goth/AI vocabulary and obvious symmetry. Never make every line profound. One plain human sentence can carry more weight than four metaphors. Write for a low baritone mouth: singable consonants, natural stresses, varied line length, no forced rhyme. OUTPUT RULE: whenever you provide actual lyrics, NEVER include timestamps, estimated durations, clock times, markdown headings, asterisks, production notes, vocal directions, arrangement commentary, or parenthetical performance instructions inside the lyric block. Use only plain Suno-safe section tags such as [Verse 1], [Pre-Chorus], [Chorus], [Bridge], [Instrumental], [Outro], followed by words intended to be sung. If discussing craft outside the lyric block, keep that commentary clearly separate. Wrap actual lyrics in <lyrics> and </lyrics> so the app can extract them safely; never put commentary inside those tags.';
     const modes={
       producer:'Act as Mr Darkness’s record producer. Think in arrangement, dynamics, instrumentation, transitions, mix perspective and song identity. Make specific production decisions.',
       song_doctor:'Act as a song doctor. Diagnose drift between generations and preserve locked traits while making the smallest useful corrections.',
@@ -625,6 +625,41 @@
   function openBrain(){ $('brainDrawer').classList.add('open');$('drawerScrim').classList.add('show');$('brainDrawer').setAttribute('aria-hidden','false');setTimeout(()=>$('brainInput').focus(),150)}
   function closeBrain(){ $('brainDrawer').classList.remove('open');$('drawerScrim').classList.remove('show');$('brainDrawer').setAttribute('aria-hidden','true')}
   function addBrainMessage(role,text){if(!state.brain)state.brain={mode:'producer',messages:[],model:''};if(!Array.isArray(state.brain.messages))state.brain.messages=[];state.brain.messages.push({role,text,mode:state.brain.mode||'producer',at:Date.now()});state.brain.messages=state.brain.messages.slice(-40);save();renderBrainMessages()}
+  function displayBrainText(text){return String(text||'').replace(/<\/?lyrics>/gi,'').trim()}
+
+  function extractLyricsFromBrainText(raw){
+    const source=String(raw||'');
+    const tagged=source.match(/<lyrics>([\s\S]*?)<\/lyrics>/i);
+    if(tagged)return buildSunoLyricsExport(tagged[1]).text.trim();
+    const lines=source.replace(/\r\n?/g,'\n').split('\n');
+    const sectionRe=/^\s*(?:#{1,6}\s*)?(?:\*\*)?\s*(?:\[[^\]]+\]|(?:verse|chorus|pre[- ]?chorus|post[- ]?chorus|bridge|refrain|intro|outro|interlude|breakdown|hook|lift|build|instrumental)\b.*?)(?:\*\*)?\s*$/i;
+    let start=-1;
+    for(let i=0;i<lines.length;i++){if(sectionRe.test(lines[i].trim())){start=i;break}}
+    if(start<0)return '';
+    const collected=[];
+    const stopRe=/^\s*(?:why this works|why it works|notes?|production notes?|analysis|explanation|commentary|craft note|what changed|rationale)\s*:?\s*$/i;
+    for(let i=start;i<lines.length;i++){const line=lines[i];if(i>start&&stopRe.test(line.trim()))break;collected.push(line)}
+    return buildSunoLyricsExport(collected.join('\n')).text.trim();
+  }
+
+  function latestAssistantMessage(){
+    const msgs=state.brain?.messages||[];
+    for(let i=msgs.length-1;i>=0;i--)if(msgs[i]?.role==='assistant')return msgs[i];
+    return null;
+  }
+
+  async function copyBrainLyrics(text){
+    const lyrics=extractLyricsFromBrainText(text);
+    if(!lyrics){toast('No lyric block found in that response.');return}
+    try{await copyText(lyrics);toast('Lyrics only copied.')}catch(err){toast(err?.message||'Copy failed.')}
+  }
+
+  function sendBrainLyricsToLab(text){
+    const lyrics=extractLyricsFromBrainText(text);
+    if(!lyrics){toast('No lyric block found in that response.');return}
+    const s=activeSong();
+    s.lyrics=lyrics;s.updatedAt=Date.now();save('LYRICS IMPORTED FROM BRAIN');renderLyrics();closeBrain();navigate('lyrics');toast('Lyrics sent to Lyrics Lab.');
+  }
   function renderBrainMessages(){const msgs=state.brain.messages||[];$('brainMessages').innerHTML=msgs.length?msgs.map((m,i)=>`<div class="brain-message ${m.role==='user'?'user':'md'}"><div class="brain-message-head"><span>${m.role==='user'?'YOU':'MR DARKNESS'} // ${escapeHtml((m.mode||'producer').replaceAll('_',' ').toUpperCase())}</span><button class="message-copy" data-copy-brain="${i}" type="button">COPY</button></div><p>${escapeHtml(m.text)}</p></div>`).join(''):'<div class="brain-message md"><div class="brain-message-head"><span>MR DARKNESS</span></div><p>I already know the active song, production sheet, vocal DNA, generations, likes, don’ts and album context. Ask from where you are.</p></div>';$('brainMessages').scrollTop=$('brainMessages').scrollHeight}
   async function refreshNativeStatus(){
     const btn=$('nativeConnectBtn');
