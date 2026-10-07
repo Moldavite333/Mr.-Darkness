@@ -679,7 +679,7 @@
         $('brainLabel').textContent='CHATGPT ONLINE';
         $('brainBtn').classList.add('native');
         $('nativeStatus').textContent='Connected';
-        btn.textContent='CONNECTED';btn.disabled=true;
+        btn.textContent='CONNECTED';btn.disabled=true;$('.native-brain-action').forEach(x=>x.hidden=false);$('.browser-brain-action').forEach(x=>x.hidden=true);
         if(!state.brain.model){
           try{
             const models=await window.MDNative.models();
@@ -692,18 +692,18 @@
         $('brainConnectionSub').textContent=status.error||'Connect your ChatGPT account to use plan sharing.';
         $('nativeStatus').textContent=status.error||'Detected — not signed in';
         btn.textContent=status.authorized?'RETRY CONNECTION TEST':'CONTINUE WITH CHATGPT';
-        btn.disabled=false;
+        btn.disabled=false;$('.native-brain-action').forEach(x=>x.hidden=true);$('.browser-brain-action').forEach(x=>x.hidden=false);
       }else{
         $('brainConnection').textContent='BROWSER BRIDGE';
         $('brainConnectionSub').textContent='Copies only the requested context into your existing ChatGPT account.';
         $('nativeStatus').textContent='Not detected in browser';
-        btn.textContent='CONTINUE WITH CHATGPT';btn.disabled=false;
+        btn.textContent='CONTINUE WITH CHATGPT';btn.disabled=false;$('.native-brain-action').forEach(x=>x.hidden=true);$('.browser-brain-action').forEach(x=>x.hidden=false);
       }
     }catch(err){
       $('brainConnection').textContent='CONNECTION CHECK FAILED';
       $('brainConnectionSub').textContent=err?.message||String(err);
       $('nativeStatus').textContent=err?.message||'Connection check failed';
-      btn.textContent='RETRY';btn.disabled=false;
+      btn.textContent='RETRY';btn.disabled=false;$('.native-brain-action').forEach(x=>x.hidden=true);$('.browser-brain-action').forEach(x=>x.hidden=false);
     }
   }
   async function connectNative(){if(!window.MDNative.available){toast('The direct Plus connection activates in the local Android build. This browser build can still hand off full context to ChatGPT.');return}try{$('nativeConnectBtn').disabled=true;$('nativeConnectBtn').textContent='CONNECTING…';await window.MDNative.connect();await refreshNativeStatus();toast('ChatGPT plan connected.')}catch(err){toast(err.message);$('nativeConnectBtn').disabled=false;$('nativeConnectBtn').textContent='CONTINUE WITH CHATGPT'}}
@@ -735,7 +735,9 @@
     const dup=e.target.closest('[data-duplicate-song]');if(dup){duplicateSong(dup.dataset.duplicateSong);return}
     const brainTask=e.target.closest('[data-brain-task]');if(brainTask){triggerBrainTask(brainTask.dataset.brainTask);return}
     const lyricAi=e.target.closest('[data-lyric-tool]');if(lyricAi){lyricTool(lyricAi.dataset.lyricTool);return}
-    const brainCopy=e.target.closest('[data-copy-brain]');if(brainCopy){const msg=(state.brain.messages||[])[Number(brainCopy.dataset.copyBrain)];if(msg)copyText(msg.text).then(()=>toast('Message copied.')).catch(err=>toast(err?.message||'Copy failed.'));return}
+    const lyricCopy=e.target.closest('[data-copy-brain-lyrics]');if(lyricCopy){const msg=(state.brain.messages||[])[Number(lyricCopy.dataset.copyBrainLyrics)];if(msg)copyBrainLyrics(msg.text);return}
+    const lyricSend=e.target.closest('[data-send-brain-lyrics]');if(lyricSend){const msg=(state.brain.messages||[])[Number(lyricSend.dataset.sendBrainLyrics)];if(msg)sendBrainLyricsToLab(msg.text);return}
+    const brainCopy=e.target.closest('[data-copy-brain]');if(brainCopy){const msg=(state.brain.messages||[])[Number(brainCopy.dataset.copyBrain)];if(msg)copyText(displayBrainText(msg.text)).then(()=>toast('Answer copied.')).catch(err=>toast(err?.message||'Copy failed.'));return}
     const copy=e.target.closest('[data-copy]');if(copy){copyValue(copy.dataset.copy);return}
   });
 
@@ -756,7 +758,7 @@
   $('newSongFromVaultBtn').addEventListener('click',createNewSong);
   $('buildVisualBtn').addEventListener('click',buildVisual);$('copyVisualBtn').addEventListener('click',()=>copyValue('visualBrief'));$('visualBrief').addEventListener('input',autosaveVisual);
   $('buildReleaseBtn').addEventListener('click',buildRelease);$('copyReleaseBtn').addEventListener('click',()=>copyValue('releaseBoard'));$('releaseBoard').addEventListener('input',autosaveRelease);
-  $('brainSend').addEventListener('click',askBrain);$('brainInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();askBrain()}});$('nativeConnectBtn').addEventListener('click',connectNative);$('copyBrainContext').addEventListener('click',copyFullContext);$('openChatGPTBtn').addEventListener('click',openChatGPT);$('clearBrainBtn').addEventListener('click',()=>{state.brain.messages=[];save();renderBrainMessages()});
+  $('brainSend').addEventListener('click',askBrain);$('brainInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();askBrain()}});$('nativeConnectBtn').addEventListener('click',connectNative);$('copyBrainContext').addEventListener('click',copyFullContext);$('openChatGPTBtn').addEventListener('click',openChatGPT);$('copyLastLyricsBtn').addEventListener('click',()=>{const m=latestAssistantMessage();if(m)copyBrainLyrics(m.text);else toast('No Mr Darkness response yet.')});$('sendLastLyricsBtn').addEventListener('click',()=>{const m=latestAssistantMessage();if(m)sendBrainLyricsToLab(m.text);else toast('No Mr Darkness response yet.')});$('clearBrainBtn').addEventListener('click',()=>{state.brain.messages=[];save();renderBrainMessages()});
   $$('#brainModes button').forEach(b=>b.addEventListener('click',()=>{state.brain.mode=b.dataset.mode;save();renderBrainModes()}));
   $('exportBtn').addEventListener('click',exportState);$('importBtn').addEventListener('click',()=>$('importFile').click());$('importFile').addEventListener('change',()=>{const f=$('importFile').files?.[0];if(f)importState(f)});
 
