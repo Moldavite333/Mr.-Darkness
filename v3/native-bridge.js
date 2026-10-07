@@ -176,7 +176,7 @@
     const modes = {
       producer: 'Act as Mr Darkness’s record producer. Think in arrangement, dynamics, instrumentation, transitions, mix perspective and song identity. Make specific production decisions.',
       song_doctor: 'Act as a song doctor. Diagnose drift between generations and preserve locked traits while making the smallest useful corrections.',
-      lyric_writer: 'Act as Mr Darkness’s lyric writer/editor. The darkness comes from the idea, not the vocabulary. Use skeptical social observation, cosmic curiosity, existential absurdity, introspection, dry wit and underlying compassion without imitating any specific writer. Favor concrete behavior, ordinary objects, contradictions, conversational turns, varied syntax, imperfect rhyme and useful rough edges. Avoid stock goth vocabulary, forced rhyme, obvious symmetry, emotional inflation and over-explaining. Never make every line profound; preserve strange human lines instead of polishing them into AI lyricism. OUTPUT RULE: whenever you provide actual lyrics, NEVER include timestamps, estimated durations, clock times, markdown headings, asterisks, production notes, vocal directions, arrangement commentary, or parenthetical performance instructions inside the lyric block. Use only plain Suno-safe section tags such as [Verse 1], [Pre-Chorus], [Chorus], [Bridge], [Instrumental], [Outro], followed by words intended to be sung. Keep any craft discussion outside the lyric block. Wrap actual lyrics in <lyrics> and </lyrics> so the app can extract them safely; never put commentary inside those tags.',
+      lyric_writer: 'Act as Mr Darkness’s lyric writer/editor. The darkness comes from the idea, not the vocabulary. Use skeptical social observation, cosmic curiosity, existential absurdity, introspection, dry wit and underlying compassion without imitating any specific writer. Favor concrete behavior, ordinary objects, contradictions, conversational turns, varied syntax, imperfect rhyme and useful rough edges. Preserve strong odd lines instead of polishing them into AI lyricism. Write for a deep low baritone with natural stresses and no forced rhyme. STRICT LYRIC WRITER CONTRACT: unless the user explicitly asks for critique, analysis, meter, explanation or notes, return ONLY the finished or revised lyrics and nothing else. No preface. No postscript. No title. No markdown headings. No bullets. No timestamps. No durations. No clock times. No production notes. No vocal directions. No arrangement instructions. No parenthetical performance commentary. No text such as instrumental-establish the pulse. Use only compact Suno-safe section tags when structurally useful: [Verse 1], [Verse 2], [Pre-Chorus], [Chorus], [Bridge], [Instrumental], [Outro]. Everything else inside the lyric block must be words intended to be sung. Wrap actual lyrics in <lyrics> and </lyrics>. If the user explicitly asks for critique or analysis, answer that request without reproducing the full lyric unless asked.',
       suno_engineer: 'Act as a Suno prompt engineer. Keep STYLE and EXCLUDE separate, dense and copy-ready. Each must remain under 1000 characters.',
       album_director: 'Act as an album producer. Analyze continuity, contrast, sequence, tempo/energy shape and repeated arrangement habits.',
       visual_director: 'Act as a visual director maintaining one recognizable Mr Darkness character and one 1980s underground world.',
@@ -187,33 +187,52 @@
 
   function buildInstructions(state, mode) {
     const song = activeSong(state);
-    const albumSongs = (state?.songs || []).filter(s => /selected|mixing|release ready/i.test(s.status || ''));
-    const album = (albumSongs.length ? albumSongs : (state?.songs || [])).map(s => ({
-      title: s.title, status: s.status, bpm: s.bpm, mode: s.mode, energy: s.energy,
-      targetLength: s.targetLength, thesis: s.thesis
-    }));
-    const latestGeneration = song?.generations?.[song.generations.length - 1] || null;
-    const context = {
-      canon: state?.canon,
-      vocalDNA: state?.vocal,
-      likes: state?.preferences?.likes || [],
-      dislikes: state?.preferences?.dislikes || [],
-      activeSong: song ? {
-        title: song.title, status: song.status, thesis: song.thesis, anchor: song.anchor,
-        bpm: song.bpm, key: song.key, mode: song.mode, targetLength: song.targetLength,
-        groove: song.groove, energy: song.energy, roles: song.roles, arrangement: song.arrangement,
-        lyrics: song.lyrics, lyricLab: song.lyricLab || null, songVocalNote: song.songVocalNote, suno: song.suno, latestGeneration
-      } : null,
-      album
-    };
+    let context;
+    if (mode === 'lyric_writer') {
+      context = {
+        canon: { lyrics: state?.canon?.lyrics || '' },
+        vocalDNA: {
+          register: state?.vocal?.register || '',
+          movement: state?.vocal?.movement || '',
+          diction: state?.vocal?.diction || ''
+        },
+        likes: state?.preferences?.likes || [],
+        dislikes: state?.preferences?.dislikes || [],
+        activeSong: song ? {
+          title: song.title, thesis: song.thesis, anchor: song.anchor,
+          lyrics: song.lyrics, lyricLab: song.lyricLab || null, phraseBank: song.phraseBank || []
+        } : null
+      };
+    } else {
+      const albumSongs = (state?.songs || []).filter(s => /selected|mixing|release ready/i.test(s.status || ''));
+      const album = (albumSongs.length ? albumSongs : (state?.songs || [])).map(s => ({
+        title: s.title, status: s.status, bpm: s.bpm, mode: s.mode, energy: s.energy,
+        targetLength: s.targetLength, thesis: s.thesis
+      }));
+      const latestGeneration = song?.generations?.[song.generations.length - 1] || null;
+      context = {
+        canon: state?.canon,
+        vocalDNA: state?.vocal,
+        likes: state?.preferences?.likes || [],
+        dislikes: state?.preferences?.dislikes || [],
+        activeSong: song ? {
+          title: song.title, status: song.status, thesis: song.thesis, anchor: song.anchor,
+          bpm: song.bpm, key: song.key, mode: song.mode, targetLength: song.targetLength,
+          groove: song.groove, energy: song.energy, roles: song.roles, arrangement: song.arrangement,
+          lyrics: song.lyrics, lyricLab: song.lyricLab || null, songVocalNote: song.songVocalNote, suno: song.suno, latestGeneration
+        } : null,
+        album
+      };
+    }
     return [
       'You are working inside MR DARKNESS HQ, a production workstation for one recurring fictional 1980s goth/darkwave artist.',
       modeInstruction(mode),
-      'Treat the supplied canon, vocal DNA, likes/don’ts, active song and generation locks as source-of-truth constraints. Diagnose drift specifically. For Suno prompts, target 850–900 characters and never exceed 999 characters per prompt.',
-      `PROJECT CONTEXT\n${JSON.stringify(context, null, 2)}`
+      mode === 'lyric_writer'
+        ? 'Use only the lyric-writing context below. Do not infer or reproduce timing, production directions, arrangement notes or timestamps from any other part of the project.'
+        : 'Treat the supplied canon, vocal DNA, likes/don’ts, active song and generation locks as source-of-truth constraints. Diagnose drift specifically. For Suno prompts, target 850–900 characters and never exceed 999 characters per prompt.',
+      'PROJECT CONTEXT\n' + JSON.stringify(context, null, 2)
     ].join('\n\n');
   }
-
   function displayStoredText(text) {
     return String(text || '').replace(/<\/?lyrics>/gi, '').trim();
   }
@@ -323,6 +342,50 @@
     applyStatusToUi(status);
   }
 
+  function isLyricAnalysisRequest(text) {
+    return /\b(analy[sz]e|analysis|critique|feedback|meter|syllable|singability|explain|why|notes?|diagnose|what works|what doesn't|what does not)\b/i.test(String(text || ''));
+  }
+
+  function normalizeSectionTag(raw) {
+    let value = String(raw || '').replace(/^#{1,6}\s*/, '').replace(/\*\*/g, '').replace(/__/g, '').replace(/`/g, '').trim();
+    value = value.replace(/^\[|\]$/g, '').replace(/\s*[-–—·]\s*(?:\d{1,2}:)?\d{1,2}:\d{2}\s*$/, '').trim();
+    const lower = value.toLowerCase();
+    const num = (value.match(/\b(\d+)\b/) || [])[1] || '';
+    if (/\binstrumental\b/.test(lower) && /\bintro\b/.test(lower)) return '[Instrumental Intro]';
+    if (/\binstrumental\b/.test(lower) && /\boutro\b/.test(lower)) return '[Instrumental Outro]';
+    if (/\binstrumental\b/.test(lower)) return '[Instrumental]';
+    const rules = [['pre-chorus','Pre-Chorus'],['pre chorus','Pre-Chorus'],['lift','Pre-Chorus'],['build','Pre-Chorus'],['verse','Verse'],['chorus','Chorus'],['bridge','Bridge'],['refrain','Refrain'],['intro','Intro'],['outro','Outro'],['interlude','Interlude'],['breakdown','Breakdown'],['hook','Hook']];
+    for (const [needle,label] of rules) { if (lower.includes(needle)) return num ? '['+label+' '+num+']' : '['+label+']'; }
+    return null;
+  }
+
+  function cleanLyricOnlyText(raw) {
+    const source = String(raw || '');
+    const tagged = source.match(/<lyrics>([\s\S]*?)<\/lyrics>/i);
+    const body = tagged ? tagged[1] : source;
+    const lines = body.replace(/\r\n?/g, '\n').split('\n');
+    const out = [];
+    let started = Boolean(tagged);
+    for (const original of lines) {
+      const trimmed = original.trim();
+      if (!trimmed) { if (started && out.length && out[out.length - 1] !== '') out.push(''); continue; }
+      const sectionish = /^(?:#{1,6}\s*)?(?:\*\*)?(?:\[[^\]]+\]|(?:verse|chorus|pre[- ]?chorus|bridge|refrain|intro|outro|interlude|breakdown|hook|lift|build|instrumental)\b.*?)(?:\*\*)?$/i.test(trimmed);
+      if (sectionish) { const tag = normalizeSectionTag(trimmed); if (tag) { out.push(tag); started = true; } continue; }
+      if (!started) continue;
+      if (/^\s*(?:[-*]\s*)?(?:singability|edit notes?|notes?|production|delivery lock|strongest new images?|emotional turn|why this works|analysis|commentary)\b/i.test(trimmed)) break;
+      if (/^\*.*\*$/.test(trimmed)) continue;
+      let line = original.replace(/\*\*/g, '').replace(/__/g, '').replace(/`/g, '').replace(/^\s*(?:\d{1,2}:)?\d{1,2}:\d{2}\s*[-–—:|]\s*/, '').replace(/\s*[-–—,;|]\s*(?:\d{1,2}:)?\d{1,2}:\d{2}\s*$/, '').replace(/\s*\((?:\d{1,2}:)?\d{1,2}:\d{2}\)\s*$/, '').trimEnd();
+      if (line.trim()) out.push(line);
+    }
+    while (out.length && out[out.length - 1] === '') out.pop();
+    return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  function normalizeLyricWriterReply(reply, request) {
+    if (isLyricAnalysisRequest(request)) return reply;
+    const lyrics = cleanLyricOnlyText(reply);
+    return lyrics ? '<lyrics>' + lyrics + '</lyrics>' : reply;
+  }
   async function nativeAskFromUi() {
     const input = document.getElementById('brainInput');
     const button = document.getElementById('brainSend');
@@ -346,7 +409,8 @@
         instructions: buildInstructions(freshState, mode),
         input: text
       });
-      addStoredMessage('assistant', result.text, mode);
+      const reply = mode === 'lyric_writer' ? normalizeLyricWriterReply(result.text, text) : result.text;
+      addStoredMessage('assistant', reply, mode);
     } catch (error) {
       addStoredMessage('assistant', `Connection problem: ${error?.message || String(error)}`, mode);
     } finally {
