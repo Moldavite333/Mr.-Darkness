@@ -33,3 +33,42 @@
   .lyric-tool-row{display:grid;grid-template-columns:1fr 1fr}
   .lyric-tool-row button{width:100%}
 }
+
+
+/* V3.2 Selection / clipboard hardening */
+.topbar,.rail,.section-head,.panel-head,.eyebrow,.panel-title,.status,.actions,button,.stat span,.stat small,.chip-cloud,.song-signal,.mode-strip,.brain-actions,.rail-foot{
+  -webkit-user-select:none;
+  user-select:none;
+}
+input,textarea,[contenteditable="true"],.production-sheet,.brief-output,.brain-message p,.line-analysis,.song-card p,.settings-block p,.lyric-constitution,.human-check span,.pressure-summary span{
+  -webkit-user-select:text;
+  user-select:text;
+}
+input,textarea{
+  -webkit-touch-callout:default;
+  touch-action:auto;
+}
+.editor-panel,.prompt-panel,.lyric-thought-engine{
+  overflow:visible;
+}
+.brain-message{position:relative}
+.brain-message-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brain-message-head span{min-width:0}
+.message-copy{
+  flex:0 0 auto;
+  border:1px solid var(--line);
+  background:#0b090a;
+  color:var(--muted);
+  border-radius:8px;
+  padding:5px 7px;
+  font-size:8px;
+  font-weight:850;
+  letter-spacing:.08em;
+}
+.message-copy:hover{border-color:#6e3542;color:white}
+::selection{background:rgba(208,70,91,.34);color:#fff}
+textarea::selection,input::selection{background:rgba(208,70,91,.45);color:#fff}
+@media(max-width:760px){
+  .message-copy{padding:6px 8px}
+  textarea,input{font-size:14px}
+}
