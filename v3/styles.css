@@ -7,3 +7,29 @@
 @media(max-width:1100px){.dashboard-grid{grid-template-columns:repeat(2,1fr)}.span2{grid-column:span 2}.vocal-grid{grid-template-columns:repeat(2,1fr)}.vault-grid,.cards-grid{grid-template-columns:repeat(2,1fr)}.form-grid.four{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.topbar{height:60px;padding:0 10px}.menu-btn{display:grid}.brand-copy small{display:none}.brand-mark{width:34px;height:34px}.brain-pill span{display:none}.brain-pill{width:38px;padding:0;justify-content:center}.rail{top:60px;transform:translateX(-110%);transition:.22s;width:244px;box-shadow:22px 0 60px rgba(0,0,0,.6)}.rail.open{transform:translateX(0)}.app{margin-left:0;padding:14px 12px 86px}.hero{min-height:430px;grid-template-columns:1fr;padding:24px 20px}.hero-status{justify-self:start;text-align:left}.hero-status strong{font-size:58px}.stats-grid{grid-template-columns:repeat(2,1fr)}.dashboard-grid,.two-col,.two-col.wide-left{grid-template-columns:1fr}.span2{grid-column:span 1}.section-head{align-items:flex-start;flex-direction:column;gap:10px}.section-head h1{font-size:36px}.section-head>.primary,.section-head>.secondary{width:100%}.form-grid.two,.form-grid.four,.roles-grid{grid-template-columns:1fr}.score-grid{grid-template-columns:repeat(2,1fr)}.cards-grid,.vault-grid,.vocal-grid{grid-template-columns:1fr}.sticky-panel{position:static}.timeline-row{grid-template-columns:58px 104px 1fr auto}.analysis-grid{grid-template-columns:repeat(2,1fr)}.lyrics-editor{min-height:420px}.big-box{min-height:360px}.album-row{grid-template-columns:90px 1fr 50px}.brain-drawer{width:100vw}.brain-status-card{align-items:stretch;flex-direction:column}.brain-status-card button{width:100%}}
 @media(max-width:420px){.stats-grid{gap:7px}.stat{padding:13px}.stat strong{font-size:26px}.hero h1{font-size:42px}.timeline-row{grid-template-columns:1fr 1fr}.timeline-row input:nth-child(3){grid-column:1 / -1}.score-grid{grid-template-columns:1fr 1fr}.analysis-grid{grid-template-columns:1fr 1fr}.actions>*{flex:1}.brand-copy strong{font-size:12px}.top-actions{gap:5px}}
+
+
+/* V3.1 Lyrics Lab — thought before decoration */
+.lyric-thought-engine{margin-bottom:12px;border-color:#4a2029;background:radial-gradient(circle at 85% 0,rgba(166,31,51,.09),transparent 34%),linear-gradient(180deg,rgba(20,13,16,.98),rgba(10,8,9,.98))}
+.lyric-thought-engine textarea{min-height:92px}
+.lyric-constitution{border-left:3px solid var(--red2);background:#0b0809;border-radius:0 11px 11px 0;padding:12px 14px;margin-top:4px;color:#c8babc;font:600 11px/1.6 Georgia,serif}
+.lyric-constitution strong{color:var(--red2);font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:9px;letter-spacing:.1em}
+.lyric-tool-row{margin-top:14px}
+.lyric-tool-row button{white-space:normal;text-align:left}
+.lyrics-workbench{align-items:start}
+.pressure-summary{display:grid;gap:4px;border:1px solid var(--line);border-radius:11px;padding:10px;margin-bottom:9px;background:#090708}
+.pressure-summary b{font-size:10px;letter-spacing:.08em}
+.pressure-summary span{font-size:9px;color:var(--muted)}
+.pressure-summary.medium{border-color:#5a4529}.pressure-summary.medium b{color:var(--amber)}
+.pressure-summary.high{border-color:#672533;background:#140b0e}.pressure-summary.high b{color:var(--red2)}
+.pressure-summary.low b{color:var(--green)}
+.human-score{display:flex;align-items:baseline;gap:9px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:5px}
+.human-score strong{font:700 28px Georgia,serif;color:#e3d5d2}.human-score span{font-size:9px;color:var(--muted);letter-spacing:.09em;text-transform:uppercase}
+.human-check{display:grid;gap:3px;border-bottom:1px solid #191114;padding:8px 0}
+.human-check:last-child{border-bottom:0}.human-check b{font-size:9px;letter-spacing:.07em}.human-check span{font-size:9px;color:var(--muted);line-height:1.45}
+.human-check.pass b{color:var(--green)}.human-check.fail b{color:#a99da0}
+@media(max-width:760px){
+  .lyric-thought-engine .form-grid.two{grid-template-columns:1fr}
+  .lyric-tool-row{display:grid;grid-template-columns:1fr 1fr}
+  .lyric-tool-row button{width:100%}
+}
