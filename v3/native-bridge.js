@@ -176,7 +176,7 @@
     const modes = {
       producer: 'Act as Mr Darkness’s record producer. Think in arrangement, dynamics, instrumentation, transitions, mix perspective and song identity. Make specific production decisions.',
       song_doctor: 'Act as a song doctor. Diagnose drift between generations and preserve locked traits while making the smallest useful corrections.',
-      lyric_writer: 'Act as Mr Darkness’s lyric writer/editor. The darkness comes from the idea, not the vocabulary. Use skeptical social observation, cosmic curiosity, existential absurdity, introspection, dry wit and underlying compassion without imitating any specific writer. Favor concrete behavior, ordinary objects, contradictions, conversational turns, varied syntax, imperfect rhyme and useful rough edges. Avoid stock goth vocabulary, forced rhyme, obvious symmetry, emotional inflation and over-explaining. Never make every line profound; preserve strange human lines instead of polishing them into AI lyricism. OUTPUT RULE: whenever you provide actual lyrics, NEVER include timestamps, estimated durations, clock times, markdown headings, asterisks, production notes, vocal directions, arrangement commentary, or parenthetical performance instructions inside the lyric block. Use only plain Suno-safe section tags such as [Verse 1], [Pre-Chorus], [Chorus], [Bridge], [Instrumental], [Outro], followed by words intended to be sung. Keep any craft discussion outside the lyric block.',
+      lyric_writer: 'Act as Mr Darkness’s lyric writer/editor. The darkness comes from the idea, not the vocabulary. Use skeptical social observation, cosmic curiosity, existential absurdity, introspection, dry wit and underlying compassion without imitating any specific writer. Favor concrete behavior, ordinary objects, contradictions, conversational turns, varied syntax, imperfect rhyme and useful rough edges. Avoid stock goth vocabulary, forced rhyme, obvious symmetry, emotional inflation and over-explaining. Never make every line profound; preserve strange human lines instead of polishing them into AI lyricism. OUTPUT RULE: whenever you provide actual lyrics, NEVER include timestamps, estimated durations, clock times, markdown headings, asterisks, production notes, vocal directions, arrangement commentary, or parenthetical performance instructions inside the lyric block. Use only plain Suno-safe section tags such as [Verse 1], [Pre-Chorus], [Chorus], [Bridge], [Instrumental], [Outro], followed by words intended to be sung. Keep any craft discussion outside the lyric block. Wrap actual lyrics in <lyrics> and </lyrics> so the app can extract them safely; never put commentary inside those tags.',
       suno_engineer: 'Act as a Suno prompt engineer. Keep STYLE and EXCLUDE separate, dense and copy-ready. Each must remain under 1000 characters.',
       album_director: 'Act as an album producer. Analyze continuity, contrast, sequence, tempo/energy shape and repeated arrangement habits.',
       visual_director: 'Act as a visual director maintaining one recognizable Mr Darkness character and one 1980s underground world.',
@@ -214,6 +214,10 @@
     ].join('\n\n');
   }
 
+  function displayStoredText(text) {
+    return String(text || '').replace(/<\/?lyrics>/gi, '').trim();
+  }
+
   function renderStoredMessages(state) {
     const host = document.getElementById('brainMessages');
     if (!host) return;
@@ -232,15 +236,22 @@
       const head = document.createElement('div'); head.className = 'brain-message-head';
       const tag = document.createElement('span');
       tag.textContent = `${message.role === 'user' ? 'YOU' : 'MR DARKNESS'} // ${(message.mode || 'producer').replaceAll('_', ' ').toUpperCase()}`;
+      const actions = document.createElement('div'); actions.className = 'message-actions';
+      if (message.role !== 'user') {
+        const copyLyrics = document.createElement('button');
+        copyLyrics.type = 'button'; copyLyrics.className = 'message-copy'; copyLyrics.dataset.copyBrainLyrics = String(index); copyLyrics.textContent = 'COPY LYRICS';
+        const toLyrics = document.createElement('button');
+        toLyrics.type = 'button'; toLyrics.className = 'message-copy'; toLyrics.dataset.sendBrainLyrics = String(index); toLyrics.textContent = 'TO LYRICS';
+        actions.append(copyLyrics, toLyrics);
+      }
       const copy = document.createElement('button');
-      copy.type = 'button'; copy.className = 'message-copy'; copy.dataset.copyBrain = String(index); copy.textContent = 'COPY';
-      head.append(tag, copy);
-      const p = document.createElement('p'); p.textContent = message.text || '';
+      copy.type = 'button'; copy.className = 'message-copy'; copy.dataset.copyBrain = String(index); copy.textContent = 'COPY ANSWER';
+      actions.append(copy); head.append(tag, actions);
+      const p = document.createElement('p'); p.textContent = displayStoredText(message.text || '');
       box.append(head, p); host.append(box);
     });
     host.scrollTop = host.scrollHeight;
   }
-
   function addStoredMessage(role, text, mode) {
     const state = readState();
     if (!state) return;
@@ -269,6 +280,8 @@
       brainButton?.classList.add('native');
       button.textContent = 'CONNECTED';
       button.disabled = true;
+      document.querySelectorAll('.native-brain-action').forEach(x => x.hidden = false);
+      document.querySelectorAll('.browser-brain-action').forEach(x => x.hidden = true);
       return;
     }
 
@@ -279,6 +292,8 @@
       if (nativeStatus) nativeStatus.textContent = status.error || 'Authorized; verification failed';
       button.textContent = 'RETRY CONNECTION TEST';
       button.disabled = false;
+      document.querySelectorAll('.native-brain-action').forEach(x => x.hidden = true);
+      document.querySelectorAll('.browser-brain-action').forEach(x => x.hidden = false);
       return;
     }
 
@@ -288,6 +303,8 @@
       if (nativeStatus) nativeStatus.textContent = status.error;
       button.textContent = 'CONTINUE WITH CHATGPT';
       button.disabled = false;
+      document.querySelectorAll('.native-brain-action').forEach(x => x.hidden = true);
+      document.querySelectorAll('.browser-brain-action').forEach(x => x.hidden = false);
       return;
     }
 
@@ -296,6 +313,8 @@
     if (nativeStatus) nativeStatus.textContent = 'Detected — not signed in';
     button.textContent = 'CONTINUE WITH CHATGPT';
     button.disabled = false;
+    document.querySelectorAll('.native-brain-action').forEach(x => x.hidden = true);
+    document.querySelectorAll('.browser-brain-action').forEach(x => x.hidden = false);
   }
 
   async function surfaceNativeStatus() {
