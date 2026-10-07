@@ -45,7 +45,7 @@
     return {
       id: nowId('song'), title: 'Untitled Transmission', status: 'Idea', thesis: '', anchor: '', bpm: 118, key: '', mode: 'Minor', targetLength: '4:30', groove: 'steady nocturnal dance pulse; bass-led', energy: 'Build to crescendo',
       roles: { bass:'Melodic hook carrier; warm and forward.', guitar:'Shimmering chorus guitar; restrained until the final third.', synth:'Atmosphere and support; never dominate.', drums:'Gated snare and dark dance pulse; no modern pop sheen.', vocal:'Deep clear restrained baritone; remain low through chorus.', wild:'Small psychedelic/prog arrangement surprise without leaving goth.' },
-      arrangement: defaultArrangement('Build to crescendo'), productionSheet:'', lyrics:'', phraseBank:[], lyricLab:{plain:'',observation:'',contradiction:'',object:'',lens:'Observer',lens2:'Cosmonaut'}, songVocalNote:'', suno:{style:'',exclude:''}, generations:[], visualBrief:'', releaseBoard:'', release:{title:'',type:'Single',moment:'',idea:''}, createdAt:Date.now(), updatedAt:Date.now()
+      arrangement: defaultArrangement('Build to crescendo'), productionSheet:'', lyrics:'', phraseBank:[], lyricLab:{plain:'',observation:'',contradiction:'',object:'',lens:'Observer',lens2:'Cosmonaut'}, brainMessages:[], songVocalNote:'', suno:{style:'',exclude:''}, generations:[], visualBrief:'', releaseBoard:'', release:{title:'',type:'Single',moment:'',idea:''}, createdAt:Date.now(), updatedAt:Date.now()
     };
   }
 
@@ -124,6 +124,7 @@
         arrangement:Array.isArray(song?.arrangement)?song.arrangement:fresh.arrangement,
         phraseBank:Array.isArray(song?.phraseBank)?song.phraseBank:[],
         generations:Array.isArray(song?.generations)?song.generations:[],
+        brainMessages:Array.isArray(song?.brainMessages)?song.brainMessages.slice(-40):[],
         lyricLab:{...fresh.lyricLab,...(song?.lyricLab||{})},
         suno:{...fresh.suno,...(song?.suno||{})},
         release:{...fresh.release,...(song?.release||{})}
@@ -376,6 +377,8 @@
     lab.object=clean($('lyricObject').value);
     lab.lens=$('lyricLens').value;
     lab.lens2=$('lyricLens2').value;
+    const title=clean($('lyricsTitle')?.value);
+    if(title)s.title=title;
     s.lyrics=$('lyricsDraft').value;
     s.updatedAt=Date.now();
     return lab;
@@ -434,9 +437,71 @@
     updateSunoLyricsExport();
     try{await copyText($('sunoLyricsExport').value);toast('Suno-ready lyrics copied.')}catch(err){toast(err?.message||'Copy failed.')}
   }
+  function nextUntitledSongTitle(){
+    const used=new Set(state.songs.map(s=>clean(s.title).toLowerCase()));
+    let n=1;
+    while(used.has(('Untitled Song '+n).toLowerCase()))n++;
+    return 'Untitled Song '+n;
+  }
+
+  function lyricFirstSong(){
+    const s=starterSong();
+    s.title=nextUntitledSongTitle();
+    s.bpm='';
+    s.key='';
+    s.mode='';
+    s.targetLength='';
+    s.groove='';
+    s.energy='';
+    s.arrangement=[];
+    s.productionSheet='';
+    s.generations=[];
+    s.suno={style:'',exclude:''};
+    s.brainMessages=[];
+    return s;
+  }
+
+  function stashBrainOnActiveSong(){
+    const s=activeSong();
+    s.brainMessages=Array.isArray(state.brain?.messages)?state.brain.messages.slice(-40):[];
+  }
+
+  function restoreBrainForSong(song){
+    if(!state.brain)state.brain={mode:'lyric_writer',messages:[],model:''};
+    state.brain.messages=Array.isArray(song?.brainMessages)?song.brainMessages.slice(-40):[];
+  }
+
+  function createNewLyricSong(){
+    try{syncLyricThoughtFromDom()}catch{}
+    stashBrainOnActiveSong();
+    const s=lyricFirstSong();
+    state.songs.push(s);
+    state.activeSongId=s.id;
+    if(!Array.isArray(state.album?.sequence))state.album.sequence=[];
+    state.album.sequence.push(s.id);
+    state.brain.mode='lyric_writer';
+    state.brain.messages=[];
+    save('NEW LYRIC SONG');
+    renderAll();
+    navigate('lyrics');
+    requestAnimationFrame(()=>{
+      const title=$('lyricsTitle');
+      if(title){title.focus({preventScroll:true});title.select()}
+    });
+    toast('Blank lyric song ready.');
+  }
+
+  function renameLyricSong(){
+    const title=$('lyricsTitle');
+    if(!title)return;
+    title.focus({preventScroll:true});
+    title.select();
+  }
+
   function renderLyrics(){
     const s=activeSong(),lab=lyricLabState(s);
     $('lyricsSongName').textContent=s.title;
+    $('lyricsTitle').value=s.title||'';
     $('lyricsDraft').value=s.lyrics||'';
     $('lyricPlain').value=lab.plain||s.thesis||'';
     $('lyricObservation').value=lab.observation||'';
@@ -624,7 +689,7 @@
   function browserPrompt(userText,mode=state.brain.mode){return [`You are working inside MR DARKNESS HQ, a production workstation for one recurring fictional 1980s goth/darkwave artist.`,brainInstructions(mode),mode==='lyric_writer'?'Use only the lyric-writing context below. Ignore timing, production and arrangement assumptions unless the user explicitly asks about them.':`Treat the supplied canon, vocal DNA, likes/don'ts, active production sheet and generation locks as source-of-truth constraints. Do not flatter. Diagnose drift specifically. For Suno prompts, target 850–900 characters and never exceed 999 per prompt.`,`\nPROJECT CONTEXT\n${JSON.stringify(projectContext(mode),null,2)}`,`\nUSER REQUEST\n${userText}`].join('\n\n')}
   function openBrain(){ $('brainDrawer').classList.add('open');$('drawerScrim').classList.add('show');$('brainDrawer').setAttribute('aria-hidden','false');setTimeout(()=>$('brainInput').focus(),150)}
   function closeBrain(){ $('brainDrawer').classList.remove('open');$('drawerScrim').classList.remove('show');$('brainDrawer').setAttribute('aria-hidden','true')}
-  function addBrainMessage(role,text){if(!state.brain)state.brain={mode:'producer',messages:[],model:''};if(!Array.isArray(state.brain.messages))state.brain.messages=[];state.brain.messages.push({role,text,mode:state.brain.mode||'producer',at:Date.now()});state.brain.messages=state.brain.messages.slice(-40);save();renderBrainMessages()}
+  function addBrainMessage(role,text){if(!state.brain)state.brain={mode:'producer',messages:[],model:''};if(!Array.isArray(state.brain.messages))state.brain.messages=[];state.brain.messages.push({role,text,mode:state.brain.mode||'producer',at:Date.now()});state.brain.messages=state.brain.messages.slice(-40);activeSong().brainMessages=state.brain.messages.slice(-40);save();renderBrainMessages()}
   function displayBrainText(text){return String(text||'').replace(/<\/?lyrics>/gi,'').trim()}
 
   function extractLyricsFromBrainText(raw){
@@ -741,7 +806,7 @@
     const railBtn=e.target.closest('.rail nav button[data-view]');if(railBtn){navigate(railBtn.dataset.view);return}
     const rem=e.target.closest('[data-remove-section]');if(rem){syncArrangementFromDom();activeSong().arrangement.splice(Number(rem.dataset.removeSection),1);save();renderArrangement();return}
     const phrase=e.target.closest('[data-remove-phrase]');if(phrase){activeSong().phraseBank.splice(Number(phrase.dataset.removePhrase),1);save();renderPhraseBank();return}
-    const open=e.target.closest('[data-open-song]');if(open){state.activeSongId=open.dataset.openSong;save('ACTIVE SONG CHANGED');renderAll();navigate('control');toast(`${activeSong().title} is active.`);return}
+    const open=e.target.closest('[data-open-song]');if(open){stashBrainOnActiveSong();state.activeSongId=open.dataset.openSong;restoreBrainForSong(activeSong());save('ACTIVE SONG CHANGED');renderAll();navigate('control');toast(`${activeSong().title} is active.`);return}
     const dup=e.target.closest('[data-duplicate-song]');if(dup){duplicateSong(dup.dataset.duplicateSong);return}
     const brainTask=e.target.closest('[data-brain-task]');if(brainTask){triggerBrainTask(brainTask.dataset.brainTask);return}
     const lyricAi=e.target.closest('[data-lyric-tool]');if(lyricAi){lyricTool(lyricAi.dataset.lyricTool);return}
@@ -762,13 +827,14 @@
   $('build').addEventListener('input',e=>{if(e.target.matches('input,textarea,select'))autosaveBuild()});$('arrangementEditor').addEventListener('input',autosaveBuild);
   $('newGenerationBtn').addEventListener('click',newGeneration);$('saveGenerationBtn').addEventListener('click',saveGeneration);$('repairBtn').addEventListener('click',buildRepair);$('copyRepairBtn').addEventListener('click',()=>copyValue('repairBrief'));$('compareBtn').addEventListener('click',compareGenerations);$('combineBtn').addEventListener('click',combineBest);$('analyzeAudioBtn').addEventListener('click',analyzeAudio);
   $$('.score-grid input[type="range"]').forEach(x=>x.addEventListener('input',()=>x.nextElementSibling.textContent=x.value));
-  $('saveLyricsBtn').addEventListener('click',saveLyrics);$('saveLyricDNA').addEventListener('click',saveLyricThought);$('meterBtn').addEventListener('click',checkMeter);$('clicheBtn').addEventListener('click',scanCliches);$('humanBtn').addEventListener('click',humanTest);$('copyLyricsBtn').addEventListener('click',()=>copyValue('lyricsDraft'));$('selectLyricsBtn').addEventListener('click',()=>selectField('lyricsDraft'));$('copySunoLyricsBtn').addEventListener('click',copySunoLyrics);$('selectionPhraseBtn').addEventListener('click',addSelectedPhrase);$('addPhraseBtn').addEventListener('click',()=>addPhrase());$('lyrics').addEventListener('input',e=>{if(e.target.matches('input,textarea,select')){autosaveLyrics();if(e.target.id==='lyricsDraft')updateSunoLyricsExport()}});
+  $('newLyricSongBtn').addEventListener('click',createNewLyricSong);$('renameLyricSongBtn').addEventListener('click',renameLyricSong);$('openLyricVaultBtn').addEventListener('click',()=>navigate('vault'));$('lyricsTitle').addEventListener('input',autosaveLyrics);
+    $('saveLyricsBtn').addEventListener('click',saveLyrics);$('saveLyricDNA').addEventListener('click',saveLyricThought);$('meterBtn').addEventListener('click',checkMeter);$('clicheBtn').addEventListener('click',scanCliches);$('humanBtn').addEventListener('click',humanTest);$('copyLyricsBtn').addEventListener('click',()=>copyValue('lyricsDraft'));$('selectLyricsBtn').addEventListener('click',()=>selectField('lyricsDraft'));$('copySunoLyricsBtn').addEventListener('click',copySunoLyrics);$('selectionPhraseBtn').addEventListener('click',addSelectedPhrase);$('addPhraseBtn').addEventListener('click',()=>addPhrase());$('lyrics').addEventListener('input',e=>{if(e.target.matches('input,textarea,select')){autosaveLyrics();if(e.target.id==='lyricsDraft')updateSunoLyricsExport()}});
   $('saveVocalBtn').addEventListener('click',saveVocal);$('saveSongVocalBtn').addEventListener('click',()=>{activeSong().songVocalNote=clean($('songVocalNote').value);save('SONG VOCAL NOTE SAVED');toast('Song-specific vocal direction saved.')});
   $('buildSunoBtn').addEventListener('click',buildSuno);$('stylePrompt').addEventListener('input',()=>{updateCounters();autosaveSuno()});$('excludePrompt').addEventListener('input',()=>{updateCounters();autosaveSuno()});
   $('newSongFromVaultBtn').addEventListener('click',createNewSong);
   $('buildVisualBtn').addEventListener('click',buildVisual);$('copyVisualBtn').addEventListener('click',()=>copyValue('visualBrief'));$('visualBrief').addEventListener('input',autosaveVisual);
   $('buildReleaseBtn').addEventListener('click',buildRelease);$('copyReleaseBtn').addEventListener('click',()=>copyValue('releaseBoard'));$('releaseBoard').addEventListener('input',autosaveRelease);
-  $('brainSend').addEventListener('click',askBrain);$('brainInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();askBrain()}});$('nativeConnectBtn').addEventListener('click',connectNative);$('copyBrainContext').addEventListener('click',copyFullContext);$('openChatGPTBtn').addEventListener('click',openChatGPT);$('copyLastLyricsBtn').addEventListener('click',()=>{const m=latestAssistantMessage();if(m)copyBrainLyrics(m.text);else toast('No Mr Darkness response yet.')});$('sendLastLyricsBtn').addEventListener('click',()=>{const m=latestAssistantMessage();if(m)sendBrainLyricsToLab(m.text);else toast('No Mr Darkness response yet.')});$('clearBrainBtn').addEventListener('click',()=>{state.brain.messages=[];save();renderBrainMessages()});
+  $('brainSend').addEventListener('click',askBrain);$('brainInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();askBrain()}});$('nativeConnectBtn').addEventListener('click',connectNative);$('copyBrainContext').addEventListener('click',copyFullContext);$('openChatGPTBtn').addEventListener('click',openChatGPT);$('copyLastLyricsBtn').addEventListener('click',()=>{const m=latestAssistantMessage();if(m)copyBrainLyrics(m.text);else toast('No Mr Darkness response yet.')});$('sendLastLyricsBtn').addEventListener('click',()=>{const m=latestAssistantMessage();if(m)sendBrainLyricsToLab(m.text);else toast('No Mr Darkness response yet.')});$('clearBrainBtn').addEventListener('click',()=>{state.brain.messages=[];activeSong().brainMessages=[];save();renderBrainMessages()});
   $$('#brainModes button').forEach(b=>b.addEventListener('click',()=>{state.brain.mode=b.dataset.mode;save();renderBrainModes()}));
   $('exportBtn').addEventListener('click',exportState);$('importBtn').addEventListener('click',()=>$('importFile').click());$('importFile').addEventListener('change',()=>{const f=$('importFile').files?.[0];if(f)importState(f)});
 
