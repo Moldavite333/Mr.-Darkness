@@ -699,6 +699,25 @@
     return m?m[1].trim():'';
   }
 
+  function extractLyricsFromBrainText(raw){
+    const source=String(raw||'');
+    const tagged=source.match(/<lyrics>([\s\S]*?)<\/lyrics>/i);
+    if(tagged)return buildSunoLyricsExport(tagged[1]).text.trim();
+    const lines=source.replace(/\r\n?/g,'\n').split('\n');
+    const sectionRe=/^\s*(?:#{1,6}\s*)?(?:\*\*)?\s*(?:\[[^\]]+\]|(?:verse|chorus|pre[- ]?chorus|post[- ]?chorus|bridge|refrain|intro|outro|interlude|breakdown|hook|lift|build|instrumental)\b.*?)(?:\*\*)?\s*$/i;
+    let start=-1;
+    for(let i=0;i<lines.length;i++){if(sectionRe.test(lines[i].trim())){start=i;break}}
+    if(start<0)return '';
+    const collected=[];
+    const stopRe=/^\s*(?:why this works|why it works|notes?|production notes?|analysis|explanation|commentary|craft note|what changed|rationale|singability and edit notes)\s*:?\s*$/i;
+    for(let i=start;i<lines.length;i++){
+      const line=lines[i];
+      if(i>start&&stopRe.test(line.replace(/^#{1,6}\s*/,'').trim()))break;
+      collected.push(line);
+    }
+    return buildSunoLyricsExport(collected.join('\n')).text.trim();
+  }
+
   function parseBrainMessage(message){
     const raw=String(message?.text||'');
     const mode=message?.mode||'producer';
