@@ -174,13 +174,13 @@
 
   function modeInstruction(mode) {
     const modes = {
-      producer: 'Act as Mr Darkness’s record producer. Think in arrangement, dynamics, instrumentation, transitions, mix perspective and song identity. Make specific production decisions.',
-      song_doctor: 'Act as a song doctor. Diagnose drift between generations and preserve locked traits while making the smallest useful corrections.',
+      producer: 'Act as Mr Darkness’s record producer. Think in arrangement, dynamics, instrumentation, transitions, mix perspective and song identity. Make specific production decisions. Put the usable result in <answer>...</answer>. Put optional explanation in <notes>...</notes>. Keep notes separate from the copy-ready answer.',
+      song_doctor: 'Act as a song doctor. Diagnose drift between generations and preserve locked traits while making the smallest useful corrections. Put the usable repair direction in <answer>...</answer>. Put optional diagnosis or rationale in <notes>...</notes>. Keep notes separate.',
       lyric_writer: 'Act as Mr Darkness’s lyric writer/editor. The darkness comes from the idea, not the vocabulary. Use skeptical social observation, cosmic curiosity, existential absurdity, introspection, dry wit and underlying compassion without imitating any specific writer. Favor concrete behavior, ordinary objects, contradictions, conversational turns, varied syntax, imperfect rhyme and useful rough edges. Preserve strong odd lines instead of polishing them into AI lyricism. Write for a deep low baritone with natural stresses and no forced rhyme. STRICT LYRIC WRITER CONTRACT: unless the user explicitly asks for critique, analysis, meter, explanation or notes, return ONLY the finished or revised lyrics and nothing else. No preface. No postscript. No title. No markdown headings. No bullets. No timestamps. No durations. No clock times. No production notes. No vocal directions. No arrangement instructions. No parenthetical performance commentary. No text such as instrumental-establish the pulse. Use only compact Suno-safe section tags when structurally useful: [Verse 1], [Verse 2], [Pre-Chorus], [Chorus], [Bridge], [Instrumental], [Outro]. Everything else inside the lyric block must be words intended to be sung. Wrap actual lyrics in <lyrics> and </lyrics>. If the user explicitly asks for critique or analysis, answer that request without reproducing the full lyric unless asked.',
-      suno_engineer: 'Act as a Suno prompt engineer. Keep STYLE and EXCLUDE separate, dense and copy-ready. Each must remain under 1000 characters.',
-      album_director: 'Act as an album producer. Analyze continuity, contrast, sequence, tempo/energy shape and repeated arrangement habits.',
-      visual_director: 'Act as a visual director maintaining one recognizable Mr Darkness character and one 1980s underground world.',
-      release_director: 'Act as a release director. Preserve mystery, avoid influencer language, and build practical teaser/release sequences.'
+      suno_engineer: 'Act as a Suno prompt engineer. Return exactly separate copy-ready blocks: <style>STYLE PROMPT ONLY</style> and <exclude>EXCLUDE PROMPT ONLY</exclude>. Each must remain under 1000 characters, ideally 850–900. Put optional explanation in <notes>...</notes>; never mix notes into either prompt.',
+      album_director: 'Act as an album producer. Analyze continuity, contrast, sequence, tempo/energy shape and repeated arrangement habits. Put the actionable recommendation in <answer>...</answer> and optional reasoning in <notes>...</notes>.',
+      visual_director: 'Act as a visual director maintaining one recognizable Mr Darkness character and one 1980s underground world. Put the copy-ready visual brief in <answer>...</answer> and optional reasoning in <notes>...</notes>.',
+      release_director: 'Act as a release director. Preserve mystery, avoid influencer language, and build practical teaser/release sequences. Put the usable campaign output in <answer>...</answer> and optional reasoning in <notes>...</notes>.'
     };
     return modes[mode] || modes.producer;
   }
@@ -281,7 +281,8 @@
     const song = activeSong(state);
     if (song) song.brainMessages = state.brain.messages.slice(-40);
     writeState(state);
-    renderStoredMessages(state);
+    if (typeof window.MDRefreshBrainFromStorage === 'function') window.MDRefreshBrainFromStorage();
+    else renderStoredMessages(state);
   }
 
   function applyStatusToUi(status) {
