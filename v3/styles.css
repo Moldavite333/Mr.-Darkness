@@ -127,3 +127,33 @@ textarea::selection,input::selection{background:rgba(208,70,91,.45);color:#fff}
   .lyric-song-actions{display:grid;grid-template-columns:1fr 1fr}
   .lyric-song-actions button{width:100%}
 }
+
+
+/* V3.5 Ask Mr Darkness — copy-ready output separated from optional notes */
+.brain-output-block{border:1px solid #44252d;border-radius:11px;background:#090708;overflow:hidden;margin-top:8px}
+.brain-output-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 9px;border-bottom:1px solid #25171b;background:#120c0e}
+.brain-output-head>span{font-size:8px;color:var(--red2);letter-spacing:.12em;font-weight:900}
+.brain-output-text{margin:0;padding:11px 12px;white-space:pre-wrap;overflow-wrap:anywhere;font:500 11px/1.58 Inter,ui-sans-serif,system-ui,sans-serif;color:#ddd2d0;background:transparent}
+.brain-user-text{white-space:pre-wrap;font-size:11px;line-height:1.55;color:#d2c7c7;margin-top:5px}
+.brain-notes{margin-top:8px;border:1px solid #24191c;border-radius:10px;background:#080607}
+.brain-notes summary{cursor:pointer;padding:9px 10px;font-size:8px;letter-spacing:.1em;font-weight:850;color:#8e8184;list-style:none}
+.brain-notes summary::-webkit-details-marker{display:none}
+.brain-notes summary::after{content:'+';float:right;color:#74676a}
+.brain-notes[open] summary::after{content:'−'}
+.brain-notes summary small{font-size:7px;color:#5e5557;margin-left:5px}
+.brain-notes-body{position:relative;border-top:1px solid #1b1215;padding:9px}
+.brain-notes-body .message-copy{margin-bottom:7px}
+.brain-notes-body pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#8f8486;font:500 10px/1.5 Inter,ui-sans-serif,system-ui,sans-serif}
+@media (pointer:coarse), (max-width:760px){
+  .brain-output-text,
+  .brain-user-text,
+  .brain-notes,
+  .brain-notes pre{
+    -webkit-user-select:none!important;
+    user-select:none!important;
+    -webkit-touch-callout:none!important;
+  }
+  .brain-output-head{align-items:flex-start;flex-direction:column}
+  .brain-output-head .message-actions{width:100%}
+  .brain-output-head .message-copy{flex:1}
+}
