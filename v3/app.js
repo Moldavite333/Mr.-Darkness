@@ -675,13 +675,13 @@
   function brainInstructions(mode){
     const lyric='Act as Mr Darkness’s lyric writer/editor. '+LYRIC_CONSTITUTION+' HUMAN FLOW: '+LYRIC_HUMAN_RULES+' Use skeptical social observation, cosmic curiosity, existential absurdity, introspection, dry wit and underlying compassion without imitating any specific writer. Favor human thought over poetic decoration. Preserve strong odd lines and useful rough edges. Write for a deep low baritone with natural stresses and no forced rhyme. STRICT LYRIC WRITER CONTRACT: unless the user explicitly asks for critique, analysis, meter, explanation or notes, return ONLY the finished or revised lyrics and nothing else. No preface. No postscript. No title. No markdown headings. No bullets. No timestamps. No durations. No clock times. No production notes. No vocal directions. No arrangement instructions. No commentary in parentheses. No descriptions such as instrumental-establish the pulse. Use only compact Suno-safe section tags when structurally useful: [Verse 1], [Verse 2], [Pre-Chorus], [Chorus], [Bridge], [Instrumental], [Outro]. Everything else in the lyric block must be words intended to be sung. Wrap the lyric-only result in <lyrics> and </lyrics>. If the user explicitly asks for critique or analysis, answer that request without reproducing the full lyric unless asked.';
     const modes={
-      producer:'Act as Mr Darkness’s record producer. Think in arrangement, dynamics, instrumentation, transitions, mix perspective and song identity. Make specific production decisions.',
-      song_doctor:'Act as a song doctor. Diagnose drift between generations and preserve locked traits while making the smallest useful corrections.',
+      producer:'Act as Mr Darkness’s record producer. Think in arrangement, dynamics, instrumentation, transitions, mix perspective and song identity. Make specific production decisions. Put the usable result in <answer>...</answer>. Put optional explanation or rationale in <notes>...</notes>. Keep notes brief and never mix them into the copy-ready answer.',
+      song_doctor:'Act as a song doctor. Diagnose drift between generations and preserve locked traits while making the smallest useful corrections. Put the usable repair direction in <answer>...</answer>. Put optional diagnosis or rationale in <notes>...</notes>. Keep the copy-ready repair direction separate from notes.',
       lyric_writer:lyric,
-      suno_engineer:'Act as a Suno prompt engineer. Keep STYLE and EXCLUDE separate, dense and copy-ready. Each must remain under 1000 characters.',
-      album_director:'Act as an album producer. Analyze continuity, contrast, sequence, tempo/energy shape and repeated arrangement habits without ranking songs as winners or losers.',
-      visual_director:'Act as a visual director maintaining one recognizable Mr Darkness character and one 1980s underground world.',
-      release_director:'Act as a release director. Preserve mystery, avoid influencer language, and build practical teaser/release sequences.'
+      suno_engineer:'Act as a Suno prompt engineer. Return exactly separate copy-ready blocks: <style>STYLE PROMPT ONLY</style> and <exclude>EXCLUDE PROMPT ONLY</exclude>. Each must remain under 1000 characters, ideally 850–900. Put any optional explanation in <notes>...</notes>; never mix notes into either prompt.',
+      album_director:'Act as an album producer. Analyze continuity, contrast, sequence, tempo/energy shape and repeated arrangement habits without ranking songs as winners or losers. Put the actionable recommendation in <answer>...</answer> and optional reasoning in <notes>...</notes>.',
+      visual_director:'Act as a visual director maintaining one recognizable Mr Darkness character and one 1980s underground world. Put the copy-ready visual brief in <answer>...</answer> and optional reasoning in <notes>...</notes>.',
+      release_director:'Act as a release director. Preserve mystery, avoid influencer language, and build practical teaser/release sequences. Put the usable campaign output in <answer>...</answer> and optional reasoning in <notes>...</notes>.'
     };
     return modes[mode]||modes.producer;
   }
@@ -690,22 +690,51 @@
   function openBrain(){ $('brainDrawer').classList.add('open');$('drawerScrim').classList.add('show');$('brainDrawer').setAttribute('aria-hidden','false');setTimeout(()=>$('brainInput').focus(),150)}
   function closeBrain(){ $('brainDrawer').classList.remove('open');$('drawerScrim').classList.remove('show');$('brainDrawer').setAttribute('aria-hidden','true')}
   function addBrainMessage(role,text){if(!state.brain)state.brain={mode:'producer',messages:[],model:''};if(!Array.isArray(state.brain.messages))state.brain.messages=[];state.brain.messages.push({role,text,mode:state.brain.mode||'producer',at:Date.now()});state.brain.messages=state.brain.messages.slice(-40);activeSong().brainMessages=state.brain.messages.slice(-40);save();renderBrainMessages()}
-  function displayBrainText(text){return String(text||'').replace(/<\/?lyrics>/gi,'').trim()}
-
-  function extractLyricsFromBrainText(raw){
-    const source=String(raw||'');
-    const tagged=source.match(/<lyrics>([\s\S]*?)<\/lyrics>/i);
-    if(tagged)return buildSunoLyricsExport(tagged[1]).text.trim();
-    const lines=source.replace(/\r\n?/g,'\n').split('\n');
-    const sectionRe=/^\s*(?:#{1,6}\s*)?(?:\*\*)?\s*(?:\[[^\]]+\]|(?:verse|chorus|pre[- ]?chorus|post[- ]?chorus|bridge|refrain|intro|outro|interlude|breakdown|hook|lift|build|instrumental)\b.*?)(?:\*\*)?\s*$/i;
-    let start=-1;
-    for(let i=0;i<lines.length;i++){if(sectionRe.test(lines[i].trim())){start=i;break}}
-    if(start<0)return '';
-    const collected=[];
-    const stopRe=/^\s*(?:why this works|why it works|notes?|production notes?|analysis|explanation|commentary|craft note|what changed|rationale)\s*:?\s*$/i;
-    for(let i=start;i<lines.length;i++){const line=lines[i];if(i>start&&stopRe.test(line.trim()))break;collected.push(line)}
-    return buildSunoLyricsExport(collected.join('\n')).text.trim();
+  function stripBrainTags(text){
+    return String(text||'').replace(/<\/?(?:lyrics|answer|notes|style|exclude)>/gi,'').trim();
   }
+
+  function brainTag(text,tag){
+    const m=String(text||'').match(new RegExp('<'+tag+'>([\\s\\S]*?)<\\/'+tag+'>','i'));
+    return m?m[1].trim():'';
+  }
+
+  function parseBrainMessage(message){
+    const raw=String(message?.text||'');
+    const mode=message?.mode||'producer';
+    const blocks=[];
+    const lyrics=brainTag(raw,'lyrics');
+    const style=brainTag(raw,'style');
+    const exclude=brainTag(raw,'exclude');
+    const answer=brainTag(raw,'answer');
+    const notes=brainTag(raw,'notes');
+
+    if(lyrics)blocks.push({key:'lyrics',label:'LYRICS',text:buildSunoLyricsExport(lyrics).text.trim()});
+    if(style)blocks.push({key:'style',label:'STYLE PROMPT',text:style});
+    if(exclude)blocks.push({key:'exclude',label:'EXCLUDE PROMPT',text:exclude});
+    if(answer)blocks.push({key:'answer',label:mode==='song_doctor'?'REPAIR DIRECTION':'PRIMARY OUTPUT',text:answer});
+
+    if(!blocks.length){
+      const cleaned=stripBrainTags(raw);
+      blocks.push({
+        key:mode==='lyric_writer'?'lyrics':'answer',
+        label:mode==='lyric_writer'?'LYRICS':'PRIMARY OUTPUT',
+        text:mode==='lyric_writer'?(extractLyricsFromBrainText(cleaned)||cleaned):cleaned
+      });
+    }
+
+    let residual=raw
+      .replace(/<lyrics>[\s\S]*?<\/lyrics>/ig,'')
+      .replace(/<style>[\s\S]*?<\/style>/ig,'')
+      .replace(/<exclude>[\s\S]*?<\/exclude>/ig,'')
+      .replace(/<answer>[\s\S]*?<\/answer>/ig,'')
+      .replace(/<notes>[\s\S]*?<\/notes>/ig,'')
+      .trim();
+
+    return {blocks,notes:notes||residual};
+  }
+
+  function displayBrainText(text){return stripBrainTags(text)}
 
   function latestAssistantMessage(){
     const msgs=state.brain?.messages||[];
@@ -713,27 +742,52 @@
     return null;
   }
 
+  async function copyBrainBlock(message,key){
+    const parsed=parseBrainMessage(message);
+    const block=parsed.blocks.find(b=>b.key===key)||parsed.blocks[0];
+    if(!block?.text){toast('Nothing to copy.');return}
+    try{await copyText(block.text);toast(block.key==='lyrics'?'Lyrics copied.':'Output copied.')}catch(err){toast(err?.message||'Copy failed.')}
+  }
+
   async function copyBrainLyrics(text){
-    const lyrics=extractLyricsFromBrainText(text);
-    if(!lyrics){toast('No lyric block found in that response.');return}
-    try{await copyText(lyrics);toast('Lyrics only copied.')}catch(err){toast(err?.message||'Copy failed.')}
+    const fake={text,mode:'lyric_writer'};
+    const parsed=parseBrainMessage(fake);
+    const block=parsed.blocks.find(b=>b.key==='lyrics');
+    if(!block?.text){toast('No lyric block found in that response.');return}
+    try{await copyText(block.text);toast('Lyrics only copied.')}catch(err){toast(err?.message||'Copy failed.')}
   }
 
   function sendBrainLyricsToLab(text){
-    const lyrics=extractLyricsFromBrainText(text);
+    const fake={text,mode:'lyric_writer'};
+    const parsed=parseBrainMessage(fake);
+    const block=parsed.blocks.find(b=>b.key==='lyrics');
+    const lyrics=block?.text||'';
     if(!lyrics){toast('No lyric block found in that response.');return}
     const s=activeSong();
     s.lyrics=lyrics;s.updatedAt=Date.now();save('LYRICS IMPORTED FROM BRAIN');renderLyrics();closeBrain();navigate('lyrics');toast('Lyrics sent to Lyrics Lab.');
   }
+
   function renderBrainMessages(){
     const msgs=state.brain.messages||[];
     $('brainMessages').innerHTML=msgs.length?msgs.map((m,i)=>{
-      const assistant=m.role!=='user';
-      const lyricButtons=assistant?'<button class="message-copy" data-copy-brain-lyrics="'+i+'" type="button">COPY LYRICS</button><button class="message-copy" data-send-brain-lyrics="'+i+'" type="button">TO LYRICS</button>':'';
-      return '<div class="brain-message '+(m.role==='user'?'user':'md')+'"><div class="brain-message-head"><span>'+(m.role==='user'?'YOU':'MR DARKNESS')+' // '+escapeHtml((m.mode||'producer').replaceAll('_',' ').toUpperCase())+'</span><div class="message-actions">'+lyricButtons+'<button class="message-copy" data-copy-brain="'+i+'" type="button">COPY ANSWER</button></div></div><p>'+escapeHtml(displayBrainText(m.text))+'</p></div>';
-    }).join(''):'<div class="brain-message md"><div class="brain-message-head"><span>MR DARKNESS</span></div><p>I already know the active song, production sheet, vocal DNA, generations, likes, don’ts and album context. Ask from where you are.</p></div>';
+      if(m.role==='user'){
+        return '<div class="brain-message user"><div class="brain-message-head"><span>YOU // '+escapeHtml((m.mode||'producer').replaceAll('_',' ').toUpperCase())+'</span></div><div class="brain-user-text">'+escapeHtml(m.text)+'</div></div>';
+      }
+      const parsed=parseBrainMessage(m);
+      const outputs=parsed.blocks.map(b=>{
+        const lyricActions=b.key==='lyrics'
+          ? '<button class="message-copy" data-copy-brain-block="'+i+':'+b.key+'" type="button">COPY LYRICS</button><button class="message-copy" data-send-brain-lyrics="'+i+'" type="button">TO LYRICS</button>'
+          : '<button class="message-copy" data-copy-brain-block="'+i+':'+b.key+'" type="button">COPY '+escapeHtml(b.label)+'</button>';
+        return '<section class="brain-output-block"><div class="brain-output-head"><span>'+escapeHtml(b.label)+'</span><div class="message-actions">'+lyricActions+'</div></div><pre class="brain-output-text">'+escapeHtml(b.text)+'</pre></section>';
+      }).join('');
+      const notes=parsed.notes
+        ? '<details class="brain-notes"><summary>NOTES / WHY <small>optional</small></summary><div class="brain-notes-body"><button class="message-copy" data-copy-brain-notes="'+i+'" type="button">COPY NOTES</button><pre>'+escapeHtml(parsed.notes)+'</pre></div></details>'
+        : '';
+      return '<div class="brain-message md"><div class="brain-message-head"><span>MR DARKNESS // '+escapeHtml((m.mode||'producer').replaceAll('_',' ').toUpperCase())+'</span></div>'+outputs+notes+'</div>';
+    }).join(''):'<div class="brain-message md"><div class="brain-message-head"><span>MR DARKNESS</span></div><div class="brain-user-text">I already know the active song and the Mr Darkness canon. Ask from where you are.</div></div>';
     $('brainMessages').scrollTop=$('brainMessages').scrollHeight;
   }
+
   async function refreshNativeStatus(){
     const btn=$('nativeConnectBtn');
     try{
@@ -810,9 +864,9 @@
     const dup=e.target.closest('[data-duplicate-song]');if(dup){duplicateSong(dup.dataset.duplicateSong);return}
     const brainTask=e.target.closest('[data-brain-task]');if(brainTask){triggerBrainTask(brainTask.dataset.brainTask);return}
     const lyricAi=e.target.closest('[data-lyric-tool]');if(lyricAi){lyricTool(lyricAi.dataset.lyricTool);return}
-    const lyricCopy=e.target.closest('[data-copy-brain-lyrics]');if(lyricCopy){const msg=(state.brain.messages||[])[Number(lyricCopy.dataset.copyBrainLyrics)];if(msg)copyBrainLyrics(msg.text);return}
+    const blockCopy=e.target.closest('[data-copy-brain-block]');if(blockCopy){const [idx,key]=String(blockCopy.dataset.copyBrainBlock).split(':');const msg=(state.brain.messages||[])[Number(idx)];if(msg)copyBrainBlock(msg,key);return}
+    const notesCopy=e.target.closest('[data-copy-brain-notes]');if(notesCopy){const msg=(state.brain.messages||[])[Number(notesCopy.dataset.copyBrainNotes)];if(msg){const notes=parseBrainMessage(msg).notes;if(notes)copyText(notes).then(()=>toast('Notes copied.')).catch(err=>toast(err?.message||'Copy failed.'))}return}
     const lyricSend=e.target.closest('[data-send-brain-lyrics]');if(lyricSend){const msg=(state.brain.messages||[])[Number(lyricSend.dataset.sendBrainLyrics)];if(msg)sendBrainLyricsToLab(msg.text);return}
-    const brainCopy=e.target.closest('[data-copy-brain]');if(brainCopy){const msg=(state.brain.messages||[])[Number(brainCopy.dataset.copyBrain)];if(msg)copyText(displayBrainText(msg.text)).then(()=>toast('Answer copied.')).catch(err=>toast(err?.message||'Copy failed.'));return}
     const copy=e.target.closest('[data-copy]');if(copy){copyValue(copy.dataset.copy);return}
   });
 
@@ -834,7 +888,7 @@
   $('newSongFromVaultBtn').addEventListener('click',createNewSong);
   $('buildVisualBtn').addEventListener('click',buildVisual);$('copyVisualBtn').addEventListener('click',()=>copyValue('visualBrief'));$('visualBrief').addEventListener('input',autosaveVisual);
   $('buildReleaseBtn').addEventListener('click',buildRelease);$('copyReleaseBtn').addEventListener('click',()=>copyValue('releaseBoard'));$('releaseBoard').addEventListener('input',autosaveRelease);
-  $('brainSend').addEventListener('click',askBrain);$('brainInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();askBrain()}});$('nativeConnectBtn').addEventListener('click',connectNative);$('copyBrainContext').addEventListener('click',copyFullContext);$('openChatGPTBtn').addEventListener('click',openChatGPT);$('copyLastLyricsBtn').addEventListener('click',()=>{const m=latestAssistantMessage();if(m)copyBrainLyrics(m.text);else toast('No Mr Darkness response yet.')});$('sendLastLyricsBtn').addEventListener('click',()=>{const m=latestAssistantMessage();if(m)sendBrainLyricsToLab(m.text);else toast('No Mr Darkness response yet.')});$('clearBrainBtn').addEventListener('click',()=>{state.brain.messages=[];activeSong().brainMessages=[];save();renderBrainMessages()});
+  $('brainSend').addEventListener('click',askBrain);$('brainInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();askBrain()}});$('nativeConnectBtn').addEventListener('click',connectNative);$('openChatGPTBtn').addEventListener('click',openChatGPT);$('copyLastLyricsBtn').addEventListener('click',()=>{const m=latestAssistantMessage();if(m)copyBrainLyrics(m.text);else toast('No Mr Darkness response yet.')});$('sendLastLyricsBtn').addEventListener('click',()=>{const m=latestAssistantMessage();if(m)sendBrainLyricsToLab(m.text);else toast('No Mr Darkness response yet.')});$('clearBrainBtn').addEventListener('click',()=>{state.brain.messages=[];activeSong().brainMessages=[];save();renderBrainMessages()});
   $$('#brainModes button').forEach(b=>b.addEventListener('click',()=>{state.brain.mode=b.dataset.mode;save();renderBrainModes()}));
   $('exportBtn').addEventListener('click',exportState);$('importBtn').addEventListener('click',()=>$('importFile').click());$('importFile').addEventListener('change',()=>{const f=$('importFile').files?.[0];if(f)importState(f)});
 
