@@ -807,6 +807,15 @@
     $('brainMessages').scrollTop=$('brainMessages').scrollHeight;
   }
 
+  window.MDRefreshBrainFromStorage=()=>{
+    try{
+      const stored=JSON.parse(localStorage.getItem(STORE_KEY)||'null');
+      if(stored)state=normalizeState(stored);
+    }catch{}
+    renderBrainMessages();
+    renderBrainModes();
+  };
+
   async function refreshNativeStatus(){
     const btn=$('nativeConnectBtn');
     try{
